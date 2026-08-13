@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel COT - Control de Imprenta Speed Cervic</title>
+    <!-- Tailwind CSS para el diseño elegante, estructurado y responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+
+    <style>
+        /* Tipografía Arial e intermedia según lo solicitado */
+        body, input, select, button, table {
+            font-family: Arial, sans-serif;
+        }
+        /* Animación de advertencia de los 30 minutos adaptada a fondo claro */
+        .alerta-parpadeo { /* Se mantiene la clase, se modifica la animación */
+            animation: bordeRojoClaro 0.8s infinite alternate;
+        }
+        @keyframes bordeRojoClaro {
+            from { border-color: rgb(226, 232, 240); transform: scale(1); box-shadow: none; } /* Añadimos box-shadow: none para un inicio más limpio */
+            to { border-color: rgb(239, 68, 68); box-shadow: 0 0 20px rgba(239, 68, 68, 0.7); transform: scale(1.03); } /* Aumentamos el spread y la opacidad de la sombra, y la escala */
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen px-2 pb-4 pt-0 md:px-4 md:pb-6 md:pt-0">
+
+    <!-- CONTENEDOR PRINCIPAL A PANTALLA COMPLETA -->
+    <div class="w-full space-y-0">
+        
+        <!-- TÍTULO PRINCIPAL (Estilo elegante, limpio y directo) -->
+        <div class="w-full flex items-center py-0 gap-4">
+            <img src="SPEED.png" alt="Logo Speed Cervic" class="h-24 w-auto">
+            <h1 class="text-xl font-bold tracking-tight text-slate-900 uppercase">CONTROL DE PRODUCCIÓN SPEED SERVIC</h1>
+        </div>
+
+        <!-- BARRA SUPERIOR UNIFICADA (Navegación a la izquierda y Reloj en el rincón extremo derecho) -->
+        <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center bg-white border border-slate-200 shadow-sm w-full rounded-sm overflow-hidden">
+            <!-- Bloque Izquierdo: Pestañas de Navegación -->
+            <div class="flex">
+                <button id="tabPanel" onclick="cambiarTab('panel')" class="px-6 py-4 text-xs font-bold uppercase tracking-wider border-b-2 border-indigo-600 text-indigo-600 transition-all hover:bg-slate-50">
+                    Panel de Control
+                </button>
+                <button id="tabHistorial" onclick="cambiarTab('historial')" class="px-6 py-4 text-xs font-bold uppercase tracking-wider border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-all hover:bg-slate-50">
+                    Historial de Trabajo
+                </button>
+            </div>
+
+            <!-- Bloque Derecho: Reloj del Sistema de 12 horas desplazado al extremo final (rincón) -->
+            <div class="flex items-center justify-end px-6 py-4 sm:py-0 ml-auto border-t sm:border-t-0 border-slate-100">
+                <div class="text-right">
+                    <p id="reloj" class="text-sm font-bold text-indigo-600 tracking-wider">12:00:00 AM</p>
+                    <p class="text-[9px] text-slate-400 uppercase font-bold tracking-widest">Hora Sistema</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN: PANEL DE CONTROL ACTIVO -->
+        <div id="vistaPanel" class="space-y-6 w-full">
+            <!-- BARRA DE FLUJO DE TRABAJO (Leyenda a la izquierda y el Botón de Registro al final derecho) -->
+            <div class="bg-white border border-slate-200 p-3 flex flex-col md:flex-row justify-between items-center gap-4 shadow-sm w-full rounded-sm">
+                <!-- Resumen de Diseñadores Registrados (Izquierda) -->
+                <div class="flex flex-wrap gap-2 justify-center sm:justify-start items-center text-xs">
+                    <span class="text-slate-400 font-bold uppercase mr-2 flex items-center">Diseñadores:</span>
+                    <div id="resumenDiseñadores" class="flex flex-wrap gap-2 items-center"></div>
+                </div>
+
+                <!-- Botón de Registro de OT (Ubicado al extremo derecho de la fila de Flujo) -->
+                <div class="w-full md:w-auto flex justify-end">
+                    <button onclick="abrirModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors shadow-sm rounded-sm">
+                        + Registrar COT
+                    </button>
+                </div>
+            </div>
+
+            <!-- GRILLA DE ÓRDENES ACTIVAS -->
+            <div id="panelOrdenes" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 w-full">
+                <!-- Tarjetas dinámicas -->
+            </div>
+            
+            <div id="panelVacio" class="hidden bg-white border border-slate-200 p-12 text-center rounded-sm shadow-sm w-full">
+                <p class="text-sm text-slate-500">No hay órdenes de trabajo activas en este momento.</p>
+                <button onclick="abrirModal()" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors">
+                    Registrar Trabajo
+                </button>
+            </div>
+        </div>
+
+        <!-- SECCIÓN: HISTORIAL DE TRABAJO -->
+        <div id="vistaHistorial" class="hidden space-y-4 w-full">
+            <div class="bg-white border border-slate-200 p-4 flex flex-col md:flex-row justify-between items-center gap-4 shadow-sm w-full">
+                <!-- Buscador de Historial -->
+                <div class="w-full md:w-72">
+                    <input type="text" id="buscadorHistorial" oninput="buscarEnHistorial()" class="w-full bg-slate-50 border border-slate-300 px-3 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500" placeholder="Buscar por COT, Cliente o Detalle...">
+                </div>
+            </div>
+
+            <!-- Tabla de Historial (Pantalla Completa) -->
+            <div class="bg-white border border-slate-200 shadow-sm overflow-x-auto w-full rounded-sm">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100 border-b border-slate-200 text-slate-700">
+                            <th class="p-3 text-[11px] font-bold uppercase tracking-wider">N° de COT</th>
+                            <th class="p-3 text-[11px] font-bold uppercase tracking-wider">Empresa / Cliente</th>
+                            <th class="p-3 text-[11px] font-bold uppercase tracking-wider">Diseñador</th>
+                            <th class="p-3 text-[11px] font-bold uppercase tracking-wider">Plazo de Entrega Pactado</th>
+                            <th class="p-3 text-[11px] font-bold uppercase tracking-wider">Fecha y Hora de Despacho</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaHistorialCuerpo" class="divide-y divide-slate-200 text-xs">
+                        <!-- Filas del historial inyectadas dinámicamente -->
+                    </tbody>
+                </table>
+                <div id="historialVacio" class="hidden p-8 text-center text-slate-500">
+                    No se han registrado trabajos despachados en el historial todavía.
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MODAL DE REGISTRO DE TRABAJOS (Con selector de Fecha y Hora de 12 Horas con AM/PM) -->
+    <div id="modalNuevaOT" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white border border-slate-300 p-6 w-full max-w-sm space-y-4 shadow-xl">
+            <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">Nueva Orden de Trabajo</h3>
+                <button onclick="cerrarModal()" class="text-slate-400 hover:text-slate-800 text-sm">✕</button>
+            </div>
+            
+            <form id="formOT" onsubmit="guardarOT(event)" class="space-y-3">
+                <input type="hidden" id="formOTId" value=""> <!-- Campo oculto para almacenar el ID de la OT si estamos editando -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Número de COT</label>
+                    <input type="text" id="formNumeroOT" inputmode="numeric" pattern="[0-9]*" oninput="normalizarNumeroCOT(this)" class="w-full bg-slate-100 border border-slate-200 px-3 py-2 text-xs font-bold text-indigo-600 focus:outline-none" placeholder="Ej. 1040" required>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Empresa / Cliente</label>
+                    <input type="text" id="formEmpresa" class="w-full bg-white border border-slate-300 px-3 py-2 text-xs focus:outline-none text-slate-800 focus:border-indigo-500" placeholder="Ej. Multicines S.A." required>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Diseñador</label>
+                    <div class="flex items-center gap-2">
+                        <select id="formContacto" class="flex-1 bg-white border border-slate-300 px-3 py-2 text-xs focus:outline-none text-slate-800 focus:border-indigo-500" required>
+                            <option value="HUBE">HUBE</option>
+                            <option value="ABRAHAM">ABRAHAM</option>
+                            <option value="JASON">JASON</option>
+                        </select>
+                        <div class="flex items-center gap-1.5 ml-1">
+                            <label class="text-[9px] font-bold uppercase text-slate-500">Color</label>
+                            <input type="hidden" id="formColor" value="#ef4444">
+                            <div class="relative">
+                                <button type="button" id="selectorColorTrigger" class="h-8 w-8 rounded-sm border-2 border-slate-300 ring-2 ring-indigo-500" style="background-color:#ef4444" onclick="togglePaletaColores()" title="Seleccionar color"></button>
+                                <div id="paletaColores" class="hidden absolute right-0 top-10 z-20 w-32 bg-white border border-slate-200 shadow-lg p-2 rounded-sm">
+                                    <div class="flex flex-wrap gap-1">
+                                        <button type="button" data-color="#ef4444" class="swatch-color h-6 w-6 rounded-sm border-2 border-slate-300 ring-2 ring-indigo-500" style="background-color:#ef4444" onclick="seleccionarColor('#ef4444')" title="Rojo"></button>
+                                        <button type="button" data-color="#f59e0b" class="swatch-color h-6 w-6 rounded-sm border-2 border-slate-300" style="background-color:#f59e0b" onclick="seleccionarColor('#f59e0b')" title="Amarillo"></button>
+                                        <button type="button" data-color="#10b981" class="swatch-color h-6 w-6 rounded-sm border-2 border-slate-300" style="background-color:#10b981" onclick="seleccionarColor('#10b981')" title="Verde"></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" id="formTrabajo" value="">
+
+                <!-- Sección de fecha de entrega -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Fecha de Entrega</label>
+                    <input type="date" id="formFechaEntrega" class="w-full bg-white border border-slate-300 px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500" required>
+                </div>
+
+                <!-- Sección de programación horaria de 12 horas con AM/PM -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Hora de Entrega (12 Hrs)</label>
+                    <div class="flex gap-2">
+                        <!-- Desplegable de Hora (01-12) -->
+                        <select id="formHoraEntregaHora" class="w-1/3 bg-white border border-slate-300 px-2 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500" required>
+                            <option value="01">01</option>
+                            <option value="02">02</option>
+                            <option value="03">03</option>
+                            <option value="04">04</option>
+                            <option value="05">05</option>
+                            <option value="06">06</option>
+                            <option value="07">07</option>
+                            <option value="08">08</option>
+                            <option value="09">09</option>
+                            <option value="10">10</option>
+                            <option value="11">11</option>
+                            <option value="12">12</option>
+                        </select>
+                        <!-- Desplegable de Minuto (00-59) -->
+                        <select id="formHoraEntregaMinuto" class="w-1/3 bg-white border border-slate-300 px-2 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500" required>
+                            <!-- Se rellena dinámicamente mediante javascript -->
+                        </select>
+                        <!-- Desplegable de AM/PM -->
+                        <select id="formHoraEntregaPeriodo" class="w-1/3 bg-white border border-slate-300 px-2 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500" required>
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="cerrarModal()" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-600 py-2 text-xs font-bold uppercase tracking-wider transition-colors">Cancelar</button>
+                    <button type="submit" class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white py-2 text-xs font-bold uppercase tracking-wider transition-colors shadow-sm">Registrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIRMACIÓN CORPORATIVO -->
+    <div id="modalConfirmacion" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white border border-slate-300 p-6 w-full max-w-xs space-y-4 shadow-xl">
+            <h3 id="confirmarTitulo" class="text-xs font-bold uppercase tracking-wider text-slate-700">Confirmation</h3>
+            <p id="confirmarMensaje" class="text-xs text-slate-600 leading-relaxed">¿Está seguro de realizar esta acción?</p>
+            <div class="flex gap-2 pt-2">
+                <button type="button" onclick="cerrarConfirmacion()" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-600 py-2 text-xs font-bold uppercase tracking-wider border border-slate-300 transition-colors">No</button>
+                <button id="confirmarBtnSi" class="w-1/2 bg-rose-600 hover:bg-rose-700 text-white py-2 text-xs font-bold uppercase tracking-wider transition-colors shadow-sm">Sí</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LÓGICA DE DATOS LOCALES Y CONTROLADOR -->
+    <script>
+        const COLORES_PERMITIDOS = ['#ef4444', '#f59e0b', '#10b981'];
+
+        function normalizarColor(color) {
+            return COLORES_PERMITIDOS.includes(color) ? color : '#ef4444';
+        }
+
+        // Configuración de Supabase
+        const SUPABASE_URL = 'https://zkowbocwzqnbhppgumjx.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inprb3dib2N3enFuYmhwcGd1bWp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1OTEwNzgsImV4cCI6MjEwMjE2NzA3OH0.39JG_nSybIXicj6f2O6mfsPX2hkSqVs2GaRBV04rbsU';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let databaseMock = [];
+        let correlativoActual = 1001; // Se inicializa con un valor por defecto, pero se actualiza desde Supabase
+        let funcionConfirmarPendiente = null;
+        
+        // Cola de audio para evitar que los sonidos se solapen
+        let audioQueue = [];
+        let isAudioPlaying = false;
+
+        // Historial de alertas habladas para evitar repeticiones excesivas
+        let spokenAlerts = {};
+        
+        // Cargar datos desde Supabase
+        async function cargarDatosDesdeSupabase() {
+            try {
+                const { data, error } = await _supabase
+                    .from('ots')
+                    .select('*');
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    databaseMock = [...data].sort((a, b) => {
+                        const idA = parseInt(String(a.id).replace(/^OT-|^COT-/i, ''), 10) || 0;
+                        const idB = parseInt(String(b.id).replace(/^OT-|^COT-/i, ''), 10) || 0;
+                        return idA - idB;
+                    });
+                    // Calcular siguiente correlativo filtrando posibles errores o IDs no numéricos
+                    const IDs = data
+                        .map(ot => parseInt(String(ot.id).replace(/^OT-|^COT-/i, '')))
+                        .filter(n => !isNaN(n));
+                    correlativoActual = IDs.length > 0 ? Math.max(...IDs) + 1 : 1001;
+                } else {
+                    databaseMock = [];
+                    correlativoActual = 1001;
+                }
+                evaluarAlarmasYRender();
+            } catch (err) {
+                console.error("Error de conexión:", err.message);
+            }
+        }
+
+        // Función para escuchar cambios en tiempo real desde Supabase
+        function suscribirRealtime() {
+            _supabase
+                .channel('cambios-ots')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'ots' }, (payload) => {
+                    console.log('Cambio detectado en Supabase:', payload);
+                    cargarDatosDesdeSupabase();
+                })
+                .subscribe();
+        }
+
+        // Flujograma simplificado: sólo hay dos estados para cada OT.
+        // 1 = Registrado (muestra el color real del diseñador)
+        // 2 = Finalizado (muestra el cuadro completamente gris)
+        const configuracionEtapas = {
+            1: {
+                nombre: "DISEÑO",
+                bgHeader: "bg-slate-900",
+                borderCard: "border-slate-400 shadow-sm",
+                bgContent: "bg-slate-100",
+                bgInnerBox: "bg-white/60 border border-slate-200",
+                textoHeader: "text-slate-100",
+                textoImportante: "text-slate-900",
+                textoBody: "text-slate-700",
+                bgBtnAvance: "bg-indigo-600 hover:bg-indigo-700 border-indigo-700"
+            },
+            2: {
+                nombre: "FINALIZADO",
+                bgHeader: "bg-slate-700",
+                borderCard: "border-slate-500 shadow-sm",
+                bgContent: "bg-slate-400",
+                bgInnerBox: "bg-white/10 border border-slate-300",
+                textoHeader: "text-slate-100",
+                textoImportante: "text-slate-900",
+                textoBody: "text-slate-800",
+                bgBtnAvance: "bg-slate-700 hover:bg-slate-800 border-slate-800"
+            }
+        };
+
+        // GESTIÓN DE PESTAÑAS (TABS)
+        function cambiarTab(tab) {
+            const btnPanel = document.getElementById('tabPanel');
+            const btnHistorial = document.getElementById('tabHistorial');
+            const vistaPanel = document.getElementById('vistaPanel');
+            const vistaHistorial = document.getElementById('vistaHistorial');
+
+            if (tab === 'panel') {
+                btnPanel.className = "px-6 py-4 text-xs font-bold uppercase tracking-wider border-b-2 border-indigo-600 text-indigo-600 transition-all hover:bg-slate-50";
+                btnHistorial.className = "px-6 py-4 text-xs font-bold uppercase tracking-wider border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-all hover:bg-slate-50";
+                vistaPanel.classList.remove('hidden');
+                vistaHistorial.classList.add('hidden');
+            } else {
+                btnPanel.className = "px-6 py-4 text-xs font-bold uppercase tracking-wider border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-all hover:bg-slate-50";
+                btnHistorial.className = "px-6 py-4 text-xs font-bold uppercase tracking-wider border-b-2 border-indigo-600 text-indigo-600 transition-all hover:bg-slate-50";
+                vistaPanel.classList.add('hidden');
+                vistaHistorial.classList.remove('hidden');
+                renderHistorial();
+            }
+        }
+
+        // Reloj del sistema adaptado al formato estricto de 12 Horas con AM/PM
+        function actualizarReloj() {
+            const ahora = new Date();
+            let horas = ahora.getHours();
+            const minutos = ahora.getMinutes();
+            const segundos = ahora.getSeconds();
+            const ampm = horas >= 12 ? 'PM' : 'AM';
+            
+            horas = horas % 12;
+            horas = horas ? horas : 12; // La hora 0 se representa como 12
+            
+            const horasStr = String(horas).padStart(2, '0');
+            const minutosStr = String(minutos).padStart(2, '0');
+            const segundosStr = String(segundos).padStart(2, '0');
+            
+            document.getElementById('reloj').innerText = `${horasStr}:${minutosStr}:${segundosStr} ${ampm}`;
+            evaluarAlarmasYRender();
+        }
+
+        // Formatea la fecha "YYYY-MM-DD" a "DD/MM/YYYY" para presentación en pantalla
+        function formatearFechaVista(fechaStr) {
+            if (!fechaStr) return "";
+            const partes = fechaStr.split('-');
+            if (partes.length !== 3) return fechaStr;
+            return `${partes[2]}/${partes[1]}/${partes[0]}`;
+        }
+
+        function formatearIdCOT(id) {
+            const texto = String(id || '');
+            return texto.replace(/^OT-/i, 'COT-');
+        }
+
+        function normalizarNumeroCOT(input) {
+            if (!input) return;
+            const limpio = String(input.value || '').replace(/\D/g, '').slice(0, 8);
+            input.value = limpio;
+        }
+
+        function construirIdCOT(numero) {
+            const valor = String(numero || '').replace(/\D/g, '');
+            return valor ? `COT-${valor}` : `COT-${correlativoActual}`;
+        }
+
+        // Formatea una fecha nativa de JS en un objeto de 12 horas para iniciar los desplegables
+        function obtenerEstructura12h(date) {
+            let horas = date.getHours();
+            const minutos = date.getMinutes();
+            const ampm = horas >= 12 ? 'PM' : 'AM';
+            
+            horas = horas % 12;
+            horas = horas ? horas : 12;
+            
+            return {
+                hora: String(horas).padStart(2, '0'),
+                minuto: String(minutos).padStart(2, '0'),
+                periodo: ampm
+            };
+        }
+
+        // Función para reproducir un audio aleatorio de los archivos mp3 proporcionados
+        function reproducirAudioAleatorio() {
+            const audios = ['AUDIO1.mp3', 'AUDIO2.mp3', 'AUDIO3.mp3'];
+            const indiceAleatorio = Math.floor(Math.random() * audios.length);
+            
+            // Añadimos el archivo seleccionado a la cola
+            audioQueue.push(audios[indiceAleatorio]);
+            ejecutarColaAudio();
+        }
+
+        // Procesa la cola de audios de forma secuencial
+        function ejecutarColaAudio() {
+            // Si ya hay algo sonando o la cola está vacía, no hacemos nada
+            if (isAudioPlaying || audioQueue.length === 0) return;
+
+            isAudioPlaying = true;
+            const siguienteAudio = audioQueue.shift();
+            const audio = new Audio(siguienteAudio);
+
+            // Cuando el audio termine, permitimos que suene el siguiente
+            audio.onended = () => {
+                isAudioPlaying = false;
+                ejecutarColaAudio();
+            };
+
+            audio.play().catch(err => {
+                console.warn("Reproducción bloqueada o error de archivo:", err);
+                isAudioPlaying = false;
+                ejecutarColaAudio();
+            });
+        }
+
+        function normalizarNombreDiseñador(nombre) {
+            const texto = String(nombre || 'Sin diseñador').trim();
+            const limpio = texto
+                .replace(/\bCOT\b\s*[-]?\d+\b/gi, '')
+                .replace(/\b\d+\b/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            return limpio || 'Sin diseñador';
+        }
+
+        function mezclarConBlanco(hex, factor) {
+            const valor = hex.replace('#', '');
+            const r = parseInt(valor.substring(0, 2), 16);
+            const g = parseInt(valor.substring(2, 4), 16);
+            const b = parseInt(valor.substring(4, 6), 16);
+
+            const aplicar = (canal) => Math.min(255, Math.max(0, Math.round(canal * (1 - factor) + 255 * factor)));
+            return `rgb(${aplicar(r)}, ${aplicar(g)}, ${aplicar(b)})`;
+        }
+
+        function mezclarConNegro(hex, factor) {
+            const valor = hex.replace('#', '');
+            const r = parseInt(valor.substring(0, 2), 16);
+            const g = parseInt(valor.substring(2, 4), 16);
+            const b = parseInt(valor.substring(4, 6), 16);
+
+            const aplicar = (canal) => Math.min(255, Math.max(0, Math.round(canal * (1 - factor))));
+            return `rgb(${aplicar(r)}, ${aplicar(g)}, ${aplicar(b)})`;
+        }
+
+        function oscurecerColor(hex) {
+            return mezclarConNegro(hex, 0.25);
+        }
+
+        function aclararColor(hex) {
+            return mezclarConBlanco(hex, 0.60);
+        }
+
+        function renderResumenDiseñadores() {
+            const contenedor = document.getElementById('resumenDiseñadores');
+            if (!contenedor) return;
+
+            const resumen = [
+                { nombre: 'HUBER', color: '#ef4444' },
+                { nombre: 'ABRAHAM', color: '#f59e0b' },
+                { nombre: 'JASON', color: '#10b981' }
+            ];
+
+            contenedor.innerHTML = resumen.map(item => `
+                <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-sm px-2 py-1">
+                    <span class="inline-block h-3 w-3 rounded-sm border border-slate-300" style="background-color:${item.color};"></span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-700">${item.nombre}</span>
+                </div>
+            `).join('');
+        }
+
+        // EVALUAR ALARMAS Y RENDERIZAR PANEL ACTIVO
+        function evaluarAlarmasYRender() {
+            const panel = document.getElementById('panelOrdenes');
+            const panelVacio = document.getElementById('panelVacio');
+            renderResumenDiseñadores();
+            
+            const ahora = new Date();
+            const ordenesActivas = databaseMock.filter(ot => !ot.archivada);
+
+            if (ordenesActivas.length === 0) {
+                panel.innerHTML = '';
+                panelVacio.classList.remove('hidden');
+                return;
+            } else {
+                panelVacio.classList.add('hidden');
+            }
+
+            let contenidoHTML = '';
+
+            ordenesActivas.forEach(ot => {
+                const etapaActual = (() => {
+                    const valor = Number(ot.etapa);
+                    if (valor === 3) return 2;
+                    if (valor === 2) return 2;
+                    if (valor === 1) return 1;
+                    return 1;
+                })();
+                const etapaInfo = configuracionEtapas[etapaActual] || configuracionEtapas[1];
+                
+                // Desglosar fecha "YYYY-MM-DD"
+                const fechaPartes = (ot.fechaentrega || "2026-05-18").split('-');
+                const anio = parseInt(fechaPartes[0], 10) || 2026;
+                const mes = (parseInt(fechaPartes[1], 10) || 1) - 1; // Mes base 0 en Javascript
+                const dia = parseInt(fechaPartes[2], 10) || 18;
+
+                // Desglosar la hora en formato 12 Horas "hh:mm AM/PM"
+                const partesHoraCompleta = (ot.horaentrega || "12:00 AM").split(' ');
+                const horaMinuto = partesHoraCompleta[0].split(':');
+                const ampm = partesHoraCompleta[1] || "AM";
+                
+                let horas = parseInt(horaMinuto[0], 10) || 12;
+                const minutos = parseInt(horaMinuto[1], 10) || 0;
+                
+                // Conversión de 12 a 24 horas para instanciar el Date de control
+                if (ampm === "PM" && horas < 12) horas += 12;
+                if (ampm === "AM" && horas === 12) horas = 0;
+                
+                const limiteEntrega = new Date(anio, mes, dia, horas, minutos, 0, 0);
+                const diferenciaMinutos = Math.floor((limiteEntrega - ahora) / 60000);
+                
+                // En el flujo de dos etapas, la alerta sólo aplica mientras la OT esté registrada.
+                const estaEnAlerta = diferenciaMinutos <= 30 && etapaActual === 1;
+                const estaVencido = diferenciaMinutos < 0 && etapaActual === 1;
+
+                if (etapaActual === 1) {
+                    const hitos = [10, 20, 30];
+                    for (const hito of hitos) {
+                        const claveAlerta = `${ot.id}_m${hito}`;
+                        if (diferenciaMinutos <= hito && !spokenAlerts[claveAlerta]) {
+                            hitos.filter(h => h >= hito).forEach(h => {
+                                spokenAlerts[`${ot.id}_m${h}`] = true;
+                            });
+                            reproducirAudioAleatorio();
+                            break;
+                        }
+                    }
+                }
+
+                const colorTarjeta = ot.color || '#ef4444';
+                const claseBorde = estaEnAlerta ? 'alerta-parpadeo border-rose-500' : `${etapaInfo.borderCard} border-2`;
+                const fondoFinalizado = etapaActual === 2 ? 'background-color: #9ca3af; color: #111827;' : '';
+                const headerColor = etapaActual === 1 ? oscurecerColor(colorTarjeta) : '#4b5563';
+                const bodyColor = etapaActual === 1 ? aclararColor(colorTarjeta) : '#9ca3af';
+                const estiloBotonPersonalizado = `style="background-color: ${etapaActual === 1 ? colorTarjeta : '#4b5563'};"`;
+
+                let seccionBoton = "";
+                if (etapaActual === 1) {
+                    seccionBoton = `
+                        <button onclick="confirmarFinalizado('${ot.id}')" ${estiloBotonPersonalizado} class="w-full text-white py-2 text-xs font-bold uppercase tracking-wider transition-colors border border-black/20 shadow-sm rounded-sm hover:brightness-110">
+                            Finalizado
+                        </button>
+                    `;
+                } else {
+                    seccionBoton = `
+                        <button onclick="confirmarCerrar('${ot.id}')" class="w-full bg-slate-600 hover:bg-slate-700 text-white py-2 text-xs font-bold uppercase tracking-wider transition-colors border border-slate-700 shadow-sm rounded-sm">
+                            Cerrar
+                        </button>
+                    `;
+                }
+
+                contenidoHTML += `
+                <div class="${etapaInfo.bgContent} ${claseBorde} flex flex-col justify-between overflow-hidden relative shadow-md hover:shadow-lg transition-all duration-200 rounded-sm h-full" style="${etapaActual === 2 ? fondoFinalizado : `background-color: ${bodyColor};`}">
+                    <!-- Cabecera de la tarjeta con tono de color oscuro y elegante de su propia familia -->
+                    <div class="${etapaInfo.bgHeader} ${etapaInfo.textoHeader} px-4 py-2.5 flex justify-between items-center border-b border-black/10" style="background-color: ${headerColor}; color: #fff;">
+                        <span class="text-xs font-extrabold tracking-wider">${formatearIdCOT(ot.id)}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-extrabold tracking-wider uppercase bg-white/20 px-2 py-0.5 rounded-sm">
+                                ${etapaInfo.nombre}
+                            </span>
+                            <button onclick="abrirModalEdicion('${ot.id}')" class="text-white/70 hover:text-white transition-colors p-1" title="Editar OT">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Cuerpo de la tarjeta compartiendo el mismo color base claro con cajas translúcidas para dar contraste -->
+                    <div class="p-4 flex-1 flex flex-col justify-between space-y-4">
+                        <div class="space-y-3">
+                            <!-- Datos del Registro -->
+                            <div class="space-y-1">
+                                <h4 class="text-xs font-bold ${etapaInfo.textoImportante} truncate uppercase tracking-tight">${ot.empresa || 'S/N Cliente'}</h4>
+                                <p class="text-[10px] font-extrabold uppercase tracking-wider text-black truncate">Diseñador: ${ot.contacto || '---'}</p>
+                            </div>
+
+                            <div class="flex flex-col text-[11px] ${etapaInfo.bgInnerBox} p-2 gap-1 rounded-sm">
+                                <div class="flex justify-between">
+                                    <span class="${etapaInfo.textoBody} font-bold uppercase opacity-80">Fecha:</span>
+                                    <span class="font-bold ${etapaInfo.textoImportante}">${formatearFechaVista(ot.fechaentrega)}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="${etapaInfo.textoBody} font-bold uppercase opacity-80">Hora Límite:</span>
+                                    <span class="font-extrabold ${estaVencido ? 'text-red-600 underline' : ''} ${etapaInfo.textoImportante}">${ot.horaentrega}</span>
+                                </div>
+                            </div>
+
+                            ${seccionBoton}
+                        </div>
+                    </div>
+                </div>
+                `;
+            });
+
+            if (panel.innerHTML !== contenidoHTML) {
+                panel.innerHTML = contenidoHTML;
+            }
+        }
+
+        async function avanzarEtapa(id) {
+            const index = databaseMock.findIndex(ot => ot.id === id);
+            if (index !== -1 && databaseMock[index].etapa !== 2) {
+                databaseMock[index].etapa = 2;
+                
+                const { error } = await _supabase
+                    .from('ots')
+                    .update({ etapa: 2 })
+                    .eq('id', id);
+
+                if (error) {
+                    alert("Error al actualizar etapa: " + error.message);
+                    return;
+                }
+                
+                evaluarAlarmasYRender();
+            }
+        }
+        
+        async function archivarOT(id) {
+            const index = databaseMock.findIndex(ot => ot.id === id);
+            if (index !== -1) {
+                const ahora = new Date();
+                const struct12h = obtenerEstructura12h(ahora);
+                const horaDespacho = `${struct12h.hora}:${struct12h.minuto} ${struct12h.periodo}`;
+                const fechaDespacho = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
+                
+                databaseMock[index].archivada = true;
+                databaseMock[index].horadespacho = horaDespacho;
+                databaseMock[index].fechadespacho = fechaDespacho;
+
+                const { error } = await _supabase
+                    .from('ots')
+                    .update({ 
+                        archivada: true, 
+                        horadespacho: horaDespacho, 
+                        fechadespacho: fechaDespacho
+                    }).eq('id', id);
+
+                if (error) {
+                    alert("Error al archivar: " + error.message);
+                    return;
+                }
+                
+                evaluarAlarmasYRender();
+            }
+        }
+
+        function confirmarFinalizado(id) {
+            abrirConfirmacion(
+                'Confirmar',
+                '¿Está seguro?',
+                () => avanzarEtapa(id)
+            );
+        }
+
+        function confirmarCerrar(id) {
+            abrirConfirmacion(
+                'Confirmar',
+                '¿Está seguro?',
+                () => archivarOT(id)
+            );
+        }
+
+        // RENDERIZAR VISTA DE HISTORIAL (Modificada sin Acciones de Reabrir, Eliminar ni Vaciar)
+        function renderHistorial(filtro = "") {
+            const tablaCuerpo = document.getElementById('tablaHistorialCuerpo');
+            const historialVacio = document.getElementById('historialVacio');
+            tablaCuerpo.innerHTML = '';
+
+            const historialFiltrado = databaseMock.filter(ot => {
+                if (!ot.archivada) return false;
+                if (!filtro) return true;
+                
+                const textoBusqueda = filtro.toLowerCase();
+                return ot.id.toLowerCase().includes(textoBusqueda) || 
+                       (ot.contacto && ot.contacto.toLowerCase().includes(textoBusqueda)) || 
+                       (ot.empresa && ot.empresa.toLowerCase().includes(textoBusqueda)) || 
+                       (ot.trabajo && ot.trabajo.toLowerCase().includes(textoBusqueda));
+            });
+
+            if (historialFiltrado.length === 0) {
+                historialVacio.classList.remove('hidden');
+                return;
+            } else {
+                historialVacio.classList.add('hidden');
+            }
+
+            // Mostramos los últimos despachados primero
+            historialFiltrado.reverse().forEach(ot => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-indigo-600">${formatearIdCOT(ot.id)}</td>
+                    <td class="p-3 font-semibold text-slate-800 uppercase">${ot.empresa || '---'}</td>
+                    <td class="p-3 text-slate-700">${ot.contacto || '---'}</td>
+                    <td class="p-3 text-slate-500 font-bold">${formatearFechaVista(ot.fechaentrega)} a las ${ot.horaentrega}</td>
+                    <td class="p-3 text-emerald-600 font-bold">${formatearFechaVista(ot.fechadespacho)} a las ${ot.horadespacho || '--:--'}</td>
+                `;
+                tablaCuerpo.appendChild(tr);
+            });
+        }
+
+        function togglePaletaColores() {
+            const paleta = document.getElementById('paletaColores');
+            if (!paleta) return;
+            paleta.classList.toggle('hidden');
+        }
+
+        function obtenerColorPorDiseñador(nombre) {
+            const valor = String(nombre || '').trim().toUpperCase();
+            if (valor === 'ABRAHAM') return '#f59e0b';
+            if (valor === 'JASON') return '#10b981';
+            return '#ef4444';
+        }
+
+        function seleccionarColor(color) {
+            const colorValido = normalizarColor(color);
+            const inputColor = document.getElementById('formColor');
+            const trigger = document.getElementById('selectorColorTrigger');
+            const paleta = document.getElementById('paletaColores');
+            if (!inputColor) return;
+            inputColor.value = colorValido;
+            if (trigger) trigger.style.backgroundColor = colorValido;
+            if (paleta) paleta.classList.add('hidden');
+
+            const botones = document.querySelectorAll('.swatch-color');
+            botones.forEach(boton => {
+                const activo = boton.dataset.color === colorValido;
+                boton.classList.toggle('ring-2', activo);
+                boton.classList.toggle('ring-indigo-500', activo);
+                boton.classList.toggle('border-slate-300', !activo);
+                boton.classList.toggle('border-white', activo);
+            });
+        }
+
+        function actualizarDiseñadorYColor() {
+            const selectDiseñador = document.getElementById('formContacto');
+            const colorInput = document.getElementById('formColor');
+            if (!selectDiseñador || !colorInput) return;
+
+            const nombre = String(selectDiseñador.value || '').trim().toUpperCase();
+            const color = obtenerColorPorDiseñador(nombre);
+            colorInput.value = color;
+            const trigger = document.getElementById('selectorColorTrigger');
+            if (trigger) trigger.style.backgroundColor = color;
+
+            const botones = document.querySelectorAll('.swatch-color');
+            botones.forEach(boton => {
+                const activo = boton.dataset.color === color;
+                boton.classList.toggle('ring-2', activo);
+                boton.classList.toggle('ring-indigo-500', activo);
+                boton.classList.toggle('border-slate-300', !activo);
+                boton.classList.toggle('border-white', activo);
+            });
+        }
+
+        // BUSCADOR EN VIVO EN EL HISTORIAL
+        function buscarEnHistorial() {
+            const input = document.getElementById('buscadorHistorial');
+            renderHistorial(input.value);
+        }
+
+        // CONTROL DE MODAL CREAR OT
+        function abrirModal() {
+            document.getElementById('formNumeroOT').value = '';
+            // Limpiar el ID de OT oculto y restaurar el título/botón para "Nueva OT"
+            document.getElementById('formOTId').value = '';
+            document.querySelector('#modalNuevaOT h3').innerText = 'Nueva Orden de Trabajo';
+            document.querySelector('#modalNuevaOT button[type="submit"]').innerText = 'Registrar';
+            
+            // Asegurar que el botón esté habilitado al abrir para un nuevo registro
+            const btnSubmit = document.querySelector('#formOT button[type="submit"]');
+            if (btnSubmit) {
+                btnSubmit.disabled = false;
+            }
+
+            const selectDiseñador = document.getElementById('formContacto');
+            if (selectDiseñador) {
+                selectDiseñador.value = 'HUBE';
+            }
+
+            const ahora = new Date();
+            document.getElementById('formColor').value = '#ef4444';
+            const trigger = document.getElementById('selectorColorTrigger');
+            if (trigger) trigger.style.backgroundColor = '#ef4444';
+            if (document.getElementById('paletaColores')) document.getElementById('paletaColores').classList.add('hidden');
+            const botones = document.querySelectorAll('.swatch-color');
+            botones.forEach(boton => {
+                const activo = boton.dataset.color === '#ef4444';
+                boton.classList.toggle('ring-2', activo);
+                boton.classList.toggle('ring-indigo-500', activo);
+                boton.classList.toggle('border-slate-300', !activo);
+                boton.classList.toggle('border-white', activo);
+            });
+            const inputNumero = document.getElementById('formNumeroOT');
+            if (inputNumero) {
+                inputNumero.value = String(correlativoActual || 1001);
+            }
+            
+            // Sugerir la fecha de hoy por defecto en el selector
+            const hoyFormateado = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
+            document.getElementById('formFechaEntrega').value = hoyFormateado;
+            
+            // Sugerir hora de entrega estándar (+2 horas de la actual)
+            ahora.setHours(ahora.getHours() + 2);
+            const structSug = obtenerEstructura12h(ahora);
+            
+            document.getElementById('formHoraEntregaHora').value = structSug.hora;
+            document.getElementById('formHoraEntregaMinuto').value = structSug.minuto;
+            document.getElementById('formHoraEntregaPeriodo').value = structSug.periodo;
+            
+            document.getElementById('modalNuevaOT').classList.remove('hidden');
+            setTimeout(() => {
+                const primerCampo = document.getElementById('formNumeroOT');
+                if (primerCampo) {
+                    primerCampo.focus();
+                    primerCampo.select();
+                }
+            }, 50);
+        }
+
+        // CERRAR MODAL DE REGISTRO
+        function cerrarModal() {
+            document.getElementById('modalNuevaOT').classList.add('hidden');
+            document.getElementById('formOT').reset();
+            document.getElementById('formColor').value = '#ef4444';
+            const trigger = document.getElementById('selectorColorTrigger');
+            if (trigger) trigger.style.backgroundColor = '#ef4444';
+            if (document.getElementById('paletaColores')) document.getElementById('paletaColores').classList.add('hidden');
+            const botones = document.querySelectorAll('.swatch-color');
+            botones.forEach(boton => {
+                const activo = boton.dataset.color === '#ef4444';
+                boton.classList.toggle('ring-2', activo);
+                boton.classList.toggle('ring-indigo-500', activo);
+                boton.classList.toggle('border-slate-300', !activo);
+                boton.classList.toggle('border-white', activo);
+            });
+            // Asegurarse de que el botón de envío esté habilitado y con su texto por defecto
+            const btnSubmit = document.querySelector('#formOT button[type="submit"]');
+            if (btnSubmit) {
+                btnSubmit.disabled = false;
+                btnSubmit.innerText = "Registrar"; // Texto por defecto para una nueva OT
+            }
+        }
+
+        // CONTROL DE MODAL DE CONFIRMACIÓN
+        function abrirConfirmacion(titulo, mensaje, funcionSi) {
+            document.getElementById('confirmarTitulo').innerText = titulo;
+            document.getElementById('confirmarMensaje').innerText = mensaje;
+            funcionConfirmarPendiente = funcionSi; // Guardamos la función a ejecutar si el usuario confirma
+            document.getElementById('modalConfirmacion').classList.remove('hidden');
+        }
+
+        function cerrarConfirmacion() {
+            document.getElementById('modalConfirmacion').classList.add('hidden');
+            funcionConfirmarPendiente = null; // Limpiamos la función pendiente
+            // Si el modal de OT está abierto y el botón de envío está deshabilitado, re-habilitarlo
+            const btnSubmit = document.querySelector('#formOT button[type="submit"]');
+            if (btnSubmit && btnSubmit.disabled) {
+                btnSubmit.disabled = false;
+                // Restaurar el texto original del botón del formulario OT (dependiendo si es edición o nuevo)
+                btnSubmit.innerText = document.getElementById('formOTId').value ? "Guardar Cambios" : "Registrar";
+            }
+        }
+
+        // Función que se ejecuta al hacer clic en "Sí, Confirmar" del modal de confirmación
+        async function ejecutarConfirmacion() {
+            if (funcionConfirmarPendiente) {
+                await funcionConfirmarPendiente(); // Ejecutamos la función guardada
+            }
+            cerrarConfirmacion(); // Cerramos el modal de confirmación
+
+            // Cerrar modal OT sólo si está visible (para no resetear formulario innecesariamente
+            // cuando la confirmación viene desde botones del panel).
+            const modalOT = document.getElementById('modalNuevaOT');
+            if (modalOT && !modalOT.classList.contains('hidden')) {
+                cerrarModal();
+            }
+        }
+
+        document.getElementById('confirmarBtnSi').onclick = ejecutarConfirmacion; // Asignar el evento al botón
+        
+        // Función para abrir el modal en modo edición
+        function abrirModalEdicion(id) {
+            const ot = databaseMock.find(o => o.id === id);
+            if (!ot) return;
+
+            // Rellenar el campo oculto con el ID de la OT que se está editando
+            document.getElementById('formOTId').value = ot.id;
+            
+            // Rellenar los campos del formulario con los datos de la OT
+            document.getElementById('formNumeroOT').value = String(ot.id || '').replace(/\D/g, '');
+            document.getElementById('formEmpresa').value = ot.empresa || '';
+            const selectDiseñador = document.getElementById('formContacto');
+            const nombreDiseñadorValido = ['HUBE', 'ABRAHAM', 'JASON'].includes(String(ot.contacto || '').trim().toUpperCase())
+                ? String(ot.contacto || '').trim().toUpperCase()
+                : 'HUBE';
+            if (selectDiseñador) selectDiseñador.value = nombreDiseñadorValido;
+            const colorActual = obtenerColorPorDiseñador(nombreDiseñadorValido);
+            document.getElementById('formColor').value = normalizarColor(ot.color || colorActual);
+            const trigger = document.getElementById('selectorColorTrigger');
+            if (trigger) trigger.style.backgroundColor = normalizarColor(ot.color || colorActual);
+            if (document.getElementById('paletaColores')) document.getElementById('paletaColores').classList.add('hidden');
+            const botones = document.querySelectorAll('.swatch-color');
+            botones.forEach(boton => {
+                const activo = boton.dataset.color === normalizarColor(ot.color || colorActual);
+                boton.classList.toggle('ring-2', activo);
+                boton.classList.toggle('ring-indigo-500', activo);
+                boton.classList.toggle('border-slate-300', !activo);
+                boton.classList.toggle('border-white', activo);
+            });
+            document.getElementById('formTrabajo').value = ot.trabajo || '';
+            document.getElementById('formFechaEntrega').value = ot.fechaentrega;
+
+            // Parsear la hora de entrega para los selectores de 12 horas
+            const [timePart, periodPart] = ot.horaentrega.split(' '); // Ej: ["03:30", "PM"]
+            const [hourPart, minutePart] = timePart.split(':'); // Ej: ["03", "30"]
+
+            document.getElementById('formHoraEntregaHora').value = hourPart;
+            document.getElementById('formHoraEntregaMinuto').value = minutePart;
+            document.getElementById('formHoraEntregaPeriodo').value = periodPart;
+
+            // Cambiar el título del modal y el texto del botón para indicar modo edición
+            document.querySelector('#modalNuevaOT h3').innerText = 'Editar Orden de Trabajo';
+            document.querySelector('#modalNuevaOT button[type="submit"]').innerText = 'Guardar Cambios';
+
+            // Asegurar que el botón esté habilitado al abrir para edición
+            const btnSubmit = document.querySelector('#formOT button[type="submit"]');
+            if (btnSubmit) {
+                btnSubmit.disabled = false;
+            }
+
+            document.getElementById('modalNuevaOT').classList.remove('hidden');
+        }
+
+        async function guardarOT(e) {
+            e.preventDefault();
+            
+            // Prevenir duplicados (Error 409) desactivando el botón
+            const btnSubmit = e.target.querySelector('button[type="submit"]');
+            if (btnSubmit.disabled) return;
+            btnSubmit.disabled = true;
+            const textoOriginal = btnSubmit.innerText;
+            btnSubmit.innerText = "Guardando...";
+
+            const otId = document.getElementById('formOTId').value; // Obtener el ID si estamos editando
+            const numeroCOTManual = String(document.getElementById('formNumeroOT').value || '').replace(/\D/g, '');
+            const colorSeleccionado = normalizarColor(document.getElementById('formColor').value || '#ef4444');
+            const horaEntregaFormateada = `${
+                document.getElementById('formHoraEntregaHora').value
+            }:${
+                document.getElementById('formHoraEntregaMinuto').value
+            } ${document.getElementById('formHoraEntregaPeriodo').value}`;
+
+            const nuevaOT = {
+                id: construirIdCOT(numeroCOTManual),
+                empresa: document.getElementById('formEmpresa').value,
+                contacto: document.getElementById('formContacto').value,
+                trabajo: document.getElementById('formTrabajo').value,
+                color: colorSeleccionado,
+                fechaentrega: document.getElementById('formFechaEntrega').value,
+                horaentrega: horaEntregaFormateada,
+                etapa: 1, // Recepción por defecto
+                archivada: false,
+                horadespacho: "",
+                fechadespacho: ""
+            };
+
+            let error = null;
+
+            if (otId) { // Si otId tiene valor, estamos editando una OT existente, pedimos confirmación
+                const funcionActualizar = async () => {
+                    const dataToUpdate = {
+                        empresa: nuevaOT.empresa,
+                        contacto: nuevaOT.contacto,
+                        trabajo: nuevaOT.trabajo,
+                        color: nuevaOT.color,
+                        fechaentrega: nuevaOT.fechaentrega,
+                        horaentrega: nuevaOT.horaentrega
+                    };
+                    const { error: updateError } = await _supabase
+                        .from('ots')
+                        .update(dataToUpdate)
+                        .eq('id', otId);
+                    if (updateError) {
+                        alert("Error al actualizar en Supabase: " + updateError.message);
+                        // Re-habilitar el botón de envío del formulario OT en caso de error
+                        const btnSubmitInModal = document.querySelector('#formOT button[type="submit"]');
+                        if (btnSubmitInModal) {
+                            btnSubmitInModal.disabled = false;
+                            // Restaurar el texto a "Guardar Cambios" ya que estamos en modo edición
+                            btnSubmitInModal.innerText = "Guardar Cambios";
+                        }
+                    } else {
+                        await cargarDatosDesdeSupabase();
+                    }
+                };
+                abrirConfirmacion(
+                    'Confirmar Edición',
+                    '¿Está seguro de guardar los cambios en esta Orden de Trabajo?',
+                    funcionActualizar
+                );
+                // El botón permanece deshabilitado hasta que el usuario confirme o cancele
+                // la acción en el modal de confirmación.
+                // Si el usuario cancela, cerrarConfirmacion() lo re-habilitará.
+                // Si el usuario confirma y la actualización es exitosa, cerrarModal() lo re-habilitará.
+                // Si el usuario confirma y la actualización falla, funcionActualizar() lo re-habilitará.
+            } else { // Si otId está vacío, es una nueva OT, no se necesita confirmación adicional
+                const { error: insertError } = await _supabase.from('ots').insert([nuevaOT]);
+                error = insertError;
+                if (error) {
+                    alert("Error al guardar en Supabase: " + error.message);
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerText = textoOriginal;
+                } else {
+                    cerrarModal(); // Cerramos el modal inmediatamente tras el éxito para mayor agilidad
+                    await cargarDatosDesdeSupabase(); // Refrescamos la lista en segundo plano
+                    // El botón se rehabilita en cerrarModal()
+                }
+            }
+        }
+
+        // Inicializar de forma dinámica e inmediata las opciones de minutos (00-59) en el selector
+        function initializeSelectMinutos() {
+            const minSelect = document.getElementById('formHoraEntregaMinuto');
+            if (minSelect) {
+                minSelect.innerHTML = '';
+                for (let i = 0; i < 60; i++) {
+                    const opt = document.createElement('option');
+                    const val = String(i).padStart(2, '0');
+                    opt.value = val;
+                    opt.innerText = val;
+                    minSelect.appendChild(opt);
+                }
+            }
+        }
+
+        // Desbloquear motor de audio en la primera interacción del usuario con la página
+        document.body.addEventListener('click', () => {
+            // Intentar reproducir un audio silencioso o simplemente inicializar el contexto
+            const audioDummy = new Audio();
+            audioDummy.play().catch(() => {});
+        }, { once: true });
+
+        // Registro del Service Worker para PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker registrado', reg))
+                    .catch(err => console.warn('Error al registrar Service Worker', err));
+            });
+        }
+
+        document.getElementById('formContacto').addEventListener('change', actualizarDiseñadorYColor);
+
+        // Arranque inicial automático de los ciclos del reloj y render
+        initializeSelectMinutos();
+        setInterval(actualizarReloj, 1000);
+        cargarDatosDesdeSupabase();
+        suscribirRealtime();
+        actualizarReloj();
+    </script>
+</body>
+</html>

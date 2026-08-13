@@ -1,0 +1,16 @@
+{
+  "short_name": "Panel COT",
+  "name": "Control COT Speed Cervic",
+  "description": "Sistema de Control de Producción para Imprenta",
+  "icons": [
+    {
+      "src": "SPEED.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "./index.html",
+  "display": "standalone",
+  "theme_color": "#4f46e5",
+  "background_color": "#f8fafc"
+}
