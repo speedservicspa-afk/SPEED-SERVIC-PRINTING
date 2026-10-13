@@ -1108,11 +1108,17 @@
             audioDummy.play().catch(() => {});
         }, { once: true });
 
+        let recargandoVersion = false;
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!recargandoVersion) { recargandoVersion = true; window.location.reload(); }
+            });
+        }
         // Registro del Service Worker para PWA
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('Service Worker registrado', reg))
+                    .then(reg => { reg.update(); console.log('Service Worker actualizado', reg); })
                     .catch(err => console.warn('Error al registrar Service Worker', err));
             });
         }
