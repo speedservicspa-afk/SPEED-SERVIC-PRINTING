@@ -100,6 +100,7 @@
                 <div class="w-full md:w-72">
                     <input type="text" id="buscadorHistorial" oninput="buscarEnHistorial()" class="w-full bg-slate-50 border border-slate-300 px-3 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500" placeholder="Buscar por COT, Cliente o Detalle...">
                 </div>
+                <div class="flex flex-wrap items-end gap-2"><label class="text-xs">Desde<input type="date" id="historialDesde" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"></label><label class="text-xs">Hasta<input type="date" id="historialHasta" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"></label><label class="text-xs">Filtrar por<select id="historialFechaTipo" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"><option value="fechadespacho">Fecha de despacho</option><option value="fechaentrega">Entrega pactada</option></select></label><button onclick="limpiarFechasHistorial()" class="border border-slate-300 p-2 text-xs">Limpiar fechas</button></div>
             </div>
 
             <!-- Tabla de Historial (Pantalla Completa) -->
@@ -109,7 +110,7 @@
                         <tr class="bg-slate-100 border-b border-slate-200 text-slate-700">
                             <th class="p-3 text-[11px] font-bold uppercase tracking-wider">N° de COT</th>
                             <th class="p-3 text-[11px] font-bold uppercase tracking-wider">Empresa / Cliente</th>
-                            <th class="p-3 text-[11px] font-bold uppercase tracking-wider">Diseñador</th>
+                            <th class="p-3 text-[11px] font-bold uppercase tracking-wider">Recepcionista</th><th class="p-3 text-[11px] font-bold uppercase tracking-wider">Diseñador</th>
                             <th class="p-3 text-[11px] font-bold uppercase tracking-wider">Plazo de Entrega Pactado</th>
                             <th class="p-3 text-[11px] font-bold uppercase tracking-wider">Fecha y Hora de Despacho</th>
                         </tr>
@@ -119,7 +120,7 @@
                     </tbody>
                 </table>
                 <div id="historialVacio" class="hidden p-8 text-center text-slate-500">
-                    No se han registrado trabajos despachados en el historial todavía.
+                    No hay trabajos que coincidan con los filtros seleccionados.
                 </div>
             </div>
         </div>
@@ -128,7 +129,7 @@
 
     <!-- MODAL DE REGISTRO DE TRABAJOS (Con selector de Fecha y Hora de 12 Horas con AM/PM) -->
     <div id="modalNuevaOT" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-white border border-slate-300 p-6 w-full max-w-sm space-y-4 shadow-xl">
+        <div class="bg-white border border-slate-300 p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto space-y-4 shadow-xl">
             <div class="flex justify-between items-center border-b border-slate-200 pb-2">
                 <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700">Nueva Orden de Trabajo</h3>
                 <button onclick="cerrarModal()" class="text-slate-400 hover:text-slate-800 text-sm">✕</button>
@@ -151,7 +152,7 @@
                         <select id="formContacto" class="flex-1 bg-white border border-slate-300 px-3 py-2 text-xs focus:outline-none text-slate-800 focus:border-indigo-500" required>
                             <option value="HUBE">HUBE</option>
                             <option value="ABRAHAM">ABRAHAM</option>
-                            <option value="JASON">JASON</option>
+                            
                         </select>
                         <div class="flex items-center gap-1.5 ml-1">
                             <label class="text-[9px] font-bold uppercase text-slate-500">Color</label>
@@ -169,7 +170,10 @@
                         </div>
                     </div>
                 </div>
-                <input type="hidden" id="formTrabajo" value="">
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="formRecepcionista">Recepcionista</label>
+<select id="formRecepcionista" required class="w-full border border-slate-300 px-3 py-2 text-xs"><option value="">Seleccionar</option><option>JORGE</option><option>BLANCA</option><option>STEFANY</option><option>MIRTHA</option></select></div>
+<div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="formTipoTrabajo">Tipo de trabajo</label><select id="formTipoTrabajo" class="w-full border border-slate-300 px-3 py-2 text-xs"><option value="">Seleccionar</option><option>Timbres y Lamicoid</option><option>Otros</option></select></div>
+<div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="formTrabajo">Detalle del trabajo</label><input id="formTrabajo" class="w-full border border-slate-300 px-3 py-2 text-xs"></div>
 
                 <!-- Sección de fecha de entrega -->
                 <div>
@@ -230,6 +234,25 @@
 
     <!-- LÓGICA DE DATOS LOCALES Y CONTROLADOR -->
     <script>
+        const RECEPCIONISTAS = { JORGE: '#0d9488', BLANCA: '#1d4ed8', STEFANY: '#dc2626', MIRTHA: '#0284c7' };
+        function leerDatosTrabajo(valor) {
+            try { const datos = JSON.parse(valor); if (datos && datos.version === 1 && typeof datos.detalle === 'string') return datos; } catch (_) {}
+            return { detalle: typeof valor === 'string' ? valor : '', recepcionista: '', tipo: '' };
+        }
+        function escaparHTML(valor) { return String(valor ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+        function mostrarRecepcionista(ot) {
+            const nombre = leerDatosTrabajo(ot.trabajo).recepcionista;
+            return nombre && RECEPCIONISTAS[nombre] ? `<span style="color:${RECEPCIONISTAS[nombre]}" class="font-bold">${nombre}</span>` : 'Sin registrar';
+        }
+        function coincideFechaHistorial(ot) {
+            const desde = document.getElementById('historialDesde').value;
+            const hasta = document.getElementById('historialHasta').value;
+            const campo = document.getElementById('historialFechaTipo').value;
+            const fecha = String(ot[campo] || '').slice(0, 10);
+            if (!desde && !hasta) return true;
+            return /^\d{4}-\d{2}-\d{2}$/.test(fecha) && (!desde || fecha >= desde) && (!hasta || fecha <= hasta);
+        }
+        function limpiarFechasHistorial() { document.getElementById('historialDesde').value = ''; document.getElementById('historialHasta').value = ''; buscarEnHistorial(); }
         const COLORES_PERMITIDOS = ['#ef4444', '#f59e0b', '#10b981'];
 
         function normalizarColor(color) {
@@ -478,8 +501,7 @@
 
             const resumen = [
                 { nombre: 'HUBER', color: '#ef4444' },
-                { nombre: 'ABRAHAM', color: '#f59e0b' },
-                { nombre: 'JASON', color: '#10b981' }
+                { nombre: 'ABRAHAM', color: '#f59e0b' }
             ];
 
             contenedor.innerHTML = resumen.map(item => `
@@ -602,8 +624,8 @@
                         <div class="space-y-3">
                             <!-- Datos del Registro -->
                             <div class="space-y-1">
-                                <h4 class="text-xs font-bold ${etapaInfo.textoImportante} truncate uppercase tracking-tight">${ot.empresa || 'S/N Cliente'}</h4>
-                                <p class="text-[10px] font-extrabold uppercase tracking-wider text-black truncate">Diseñador: ${ot.contacto || '---'}</p>
+                                <h4 class="text-xs font-bold ${etapaInfo.textoImportante} truncate uppercase tracking-tight">${escaparHTML(ot.empresa || 'S/N Cliente')}</h4>
+                                <p class="text-[10px] font-extrabold uppercase tracking-wider text-black truncate">Diseñador: ${escaparHTML(ot.contacto || '---')}</p><p class="text-[10px]">Recepcionista: ${mostrarRecepcionista(ot)}</p><p class="text-[10px]">${escaparHTML(leerDatosTrabajo(ot.trabajo).tipo)}</p>
                             </div>
 
                             <div class="flex flex-col text-[11px] ${etapaInfo.bgInnerBox} p-2 gap-1 rounded-sm">
@@ -700,7 +722,7 @@
             tablaCuerpo.innerHTML = '';
 
             const historialFiltrado = databaseMock.filter(ot => {
-                if (!ot.archivada) return false;
+                if (!ot.archivada || !coincideFechaHistorial(ot)) return false;
                 if (!filtro) return true;
                 
                 const textoBusqueda = filtro.toLowerCase();
@@ -723,8 +745,8 @@
                 tr.className = "hover:bg-slate-50 transition-colors";
                 tr.innerHTML = `
                     <td class="p-3 font-bold text-indigo-600">${formatearIdCOT(ot.id)}</td>
-                    <td class="p-3 font-semibold text-slate-800 uppercase">${ot.empresa || '---'}</td>
-                    <td class="p-3 text-slate-700">${ot.contacto || '---'}</td>
+                    <td class="p-3 font-semibold text-slate-800 uppercase">${escaparHTML(ot.empresa || '---')}</td>
+                    <td class="p-3">${mostrarRecepcionista(ot)}</td><td class="p-3 text-slate-700">${escaparHTML(ot.contacto || '---')}</td>
                     <td class="p-3 text-slate-500 font-bold">${formatearFechaVista(ot.fechaentrega)} a las ${ot.horaentrega}</td>
                     <td class="p-3 text-emerald-600 font-bold">${formatearFechaVista(ot.fechadespacho)} a las ${ot.horadespacho || '--:--'}</td>
                 `;
@@ -794,6 +816,8 @@
 
         // CONTROL DE MODAL CREAR OT
         function abrirModal() {
+            document.getElementById('formOT').reset();
+            Array.from(document.getElementById('formContacto').options).filter(o => !['HUBE', 'ABRAHAM'].includes(o.value)).forEach(o => o.remove());
             document.getElementById('formNumeroOT').value = '';
             // Limpiar el ID de OT oculto y restaurar el título/botón para "Nueva OT"
             document.getElementById('formOTId').value = '';
@@ -924,9 +948,10 @@
             document.getElementById('formNumeroOT').value = String(ot.id || '').replace(/\D/g, '');
             document.getElementById('formEmpresa').value = ot.empresa || '';
             const selectDiseñador = document.getElementById('formContacto');
-            const nombreDiseñadorValido = ['HUBE', 'ABRAHAM', 'JASON'].includes(String(ot.contacto || '').trim().toUpperCase())
-                ? String(ot.contacto || '').trim().toUpperCase()
-                : 'HUBE';
+            const nombreDiseñadorValido = String(ot.contacto || 'HUBE').trim().toUpperCase();
+            if (selectDiseñador && !Array.from(selectDiseñador.options).some(o => o.value === nombreDiseñadorValido)) {
+                selectDiseñador.add(new Option(nombreDiseñadorValido + ' (registro anterior)', nombreDiseñadorValido));
+            }
             if (selectDiseñador) selectDiseñador.value = nombreDiseñadorValido;
             const colorActual = obtenerColorPorDiseñador(nombreDiseñadorValido);
             document.getElementById('formColor').value = normalizarColor(ot.color || colorActual);
@@ -941,7 +966,10 @@
                 boton.classList.toggle('border-slate-300', !activo);
                 boton.classList.toggle('border-white', activo);
             });
-            document.getElementById('formTrabajo').value = ot.trabajo || '';
+            const datosTrabajo = leerDatosTrabajo(ot.trabajo);
+            document.getElementById('formTrabajo').value = datosTrabajo.detalle;
+            document.getElementById('formRecepcionista').value = datosTrabajo.recepcionista;
+            document.getElementById('formTipoTrabajo').value = datosTrabajo.tipo;
             document.getElementById('formFechaEntrega').value = ot.fechaentrega;
 
             // Parsear la hora de entrega para los selectores de 12 horas
@@ -988,7 +1016,7 @@
                 id: construirIdCOT(numeroCOTManual),
                 empresa: document.getElementById('formEmpresa').value,
                 contacto: document.getElementById('formContacto').value,
-                trabajo: document.getElementById('formTrabajo').value,
+                trabajo: JSON.stringify({version: 1, detalle: document.getElementById('formTrabajo').value, recepcionista: document.getElementById('formRecepcionista').value, tipo: document.getElementById('formTipoTrabajo').value}),
                 color: colorSeleccionado,
                 fechaentrega: document.getElementById('formFechaEntrega').value,
                 horaentrega: horaEntregaFormateada,
