@@ -80,6 +80,7 @@
                 </div>
             </div>
 
+            <div class="bg-white border border-slate-200 p-3 flex flex-wrap gap-2 items-center text-xs"><span class="font-bold text-slate-500 uppercase">Recepcionistas:</span><div id="leyendaRecepcionistas" class="flex flex-wrap gap-2"></div></div>
             <!-- GRILLA DE ÓRDENES ACTIVAS -->
             <div id="panelOrdenes" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 w-full">
                 <!-- Tarjetas dinámicas -->
@@ -234,7 +235,12 @@
 
     <!-- LÓGICA DE DATOS LOCALES Y CONTROLADOR -->
     <script>
-        const RECEPCIONISTAS = { JORGE: '#0d9488', BLANCA: '#1d4ed8', STEFANY: '#dc2626', MIRTHA: '#0284c7' };
+        const RECEPCIONISTAS = { JORGE: '#40e0d0', BLANCA: '#4169e1', STEFANY: '#ff0000', MIRTHA: '#87ceeb' };
+        function renderLeyendaRecepcionistas() {
+            const contenedor = document.getElementById('leyendaRecepcionistas');
+            if (!contenedor) return;
+            contenedor.innerHTML = Object.keys(RECEPCIONISTAS).map(nombre => mostrarRecepcionista({trabajo: JSON.stringify({version:1, detalle:'', recepcionista:nombre})})).join(' ');
+        }
         function leerDatosTrabajo(valor) {
             try { const datos = JSON.parse(valor); if (datos && datos.version === 1 && typeof datos.detalle === 'string') return datos; } catch (_) {}
             return { detalle: typeof valor === 'string' ? valor : '', recepcionista: '', tipo: '' };
@@ -242,7 +248,7 @@
         function escaparHTML(valor) { return String(valor ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
         function mostrarRecepcionista(ot) {
             const nombre = leerDatosTrabajo(ot.trabajo).recepcionista;
-            return nombre && RECEPCIONISTAS[nombre] ? `<span style="color:${RECEPCIONISTAS[nombre]}" class="font-bold">${nombre}</span>` : 'Sin registrar';
+            return nombre && RECEPCIONISTAS[nombre] ? `<span style="background-color:${RECEPCIONISTAS[nombre]};color:${['BLANCA', 'STEFANY'].includes(nombre) ? '#ffffff' : '#102a43'}" class="inline-block px-2 py-1 rounded-sm font-bold">${nombre}</span>` : 'Sin registrar';
         }
         function coincideFechaHistorial(ot) {
             const desde = document.getElementById('historialDesde').value;
@@ -1114,6 +1120,7 @@
         document.getElementById('formContacto').addEventListener('change', actualizarDiseñadorYColor);
 
         // Arranque inicial automático de los ciclos del reloj y render
+        renderLeyendaRecepcionistas();
         initializeSelectMinutos();
         setInterval(actualizarReloj, 1000);
         cargarDatosDesdeSupabase();
