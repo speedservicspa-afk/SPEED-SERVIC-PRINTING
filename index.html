@@ -618,6 +618,7 @@
         // EVALUAR ALARMAS Y RENDERIZAR PANEL ACTIVO
         function evaluarAlarmasYRender() {
             renderResumenSemanal();
+            if (!document.getElementById('vistaHistorial').classList.contains('hidden')) renderHistorial();
             const panel = document.getElementById('panelOrdenes');
             const panelVacio = document.getElementById('panelVacio');
             renderResumenDiseñadores();
@@ -847,8 +848,12 @@
                 historialVacio.classList.add('hidden');
             }
 
-            // Mostramos los últimos despachados primero
-            historialFiltrado.reverse().forEach(ot => {
+            // Ordenar por actividad real, no por número de COT.
+            historialFiltrado.sort((a, b) => {
+                const actividad = ot => fechaHoraComparable(ot.fechadespacho, ot.horadespacho) ??
+                    fechaHoraComparable(leerDatosTrabajo(ot.trabajo).fechaFinalizacion, '23:59') ?? 0;
+                return actividad(b) - actividad(a) || String(b.id).localeCompare(String(a.id), undefined, {numeric:true});
+            }).forEach(ot => {
                 const entrega = ot.archivada ? estadoEntrega(ot) : {clase:'text-slate-600 bg-slate-50', texto:'Pendiente de despacho'};
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition-colors";
