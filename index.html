@@ -379,7 +379,11 @@
         let spokenAlerts = {};
         
         // Cargar datos desde Supabase
+        let cargaOTsEnCurso = false;
+        let cargaOTsPendiente = false;
         async function cargarDatosDesdeSupabase() {
+            if (cargaOTsEnCurso) { cargaOTsPendiente = true; return; }
+            cargaOTsEnCurso = true;
             try {
                 const { data, error } = await _supabase
                     .from('ots')
@@ -405,6 +409,9 @@
                 evaluarAlarmasYRender();
             } catch (err) {
                 console.error("Error de conexión:", err.message);
+            } finally {
+                cargaOTsEnCurso = false;
+                if (cargaOTsPendiente) { cargaOTsPendiente = false; cargarDatosDesdeSupabase(); }
             }
         }
 
@@ -1246,6 +1253,15 @@
         setInterval(actualizarReloj, 1000);
         cargarDatosDesdeSupabase();
         suscribirRealtime();
+        // Respaldo de sincronización cuando el canal en tiempo real no entrega eventos.
+        setInterval(() => {
+            if (document.visibilityState === 'visible' && navigator.onLine) cargarDatosDesdeSupabase();
+        }, 5000);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') cargarDatosDesdeSupabase();
+        });
+        window.addEventListener('focus', () => cargarDatosDesdeSupabase());
+        window.addEventListener('online', () => cargarDatosDesdeSupabase());
         actualizarReloj();
     </script>
 </body>
