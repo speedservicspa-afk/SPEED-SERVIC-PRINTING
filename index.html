@@ -101,7 +101,7 @@
                 <div class="w-full md:w-72">
                     <input type="text" id="buscadorHistorial" oninput="buscarEnHistorial()" class="w-full bg-slate-50 border border-slate-300 px-3 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500" placeholder="Buscar por COT, Cliente o Detalle...">
                 </div>
-                <div class="flex flex-wrap items-end gap-2"><label class="text-xs">Desde<input type="date" id="historialDesde" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"></label><label class="text-xs">Hasta<input type="date" id="historialHasta" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"></label><label class="text-xs">Filtrar por<select id="historialFechaTipo" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"><option value="fechadespacho">Fecha de despacho</option><option value="fechaentrega">Entrega pactada</option></select></label><button onclick="limpiarFechasHistorial()" class="border border-slate-300 p-2 text-xs">Limpiar fechas</button></div>
+                <div class="flex flex-wrap items-end gap-2"><label class="text-xs">Desde<input type="date" id="historialDesde" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"></label><label class="text-xs">Hasta<input type="date" id="historialHasta" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"></label><label class="text-xs">Filtrar por<select id="historialFechaTipo" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"><option value="fechadespacho">Fecha de despacho</option><option value="fechaentrega">Entrega pactada</option></select></label><label class="text-xs">Diseñador<select id="historialDisenador" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"><option value="">Todos</option></select></label><label class="text-xs">Recepcionista<select id="historialRecepcionista" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"><option value="">Todos</option></select></label><button onclick="limpiarFechasHistorial()" class="border border-slate-300 p-2 text-xs">Limpiar filtros</button></div>
             </div>
 
             <!-- Tabla de Historial (Pantalla Completa) -->
@@ -172,7 +172,7 @@
                     </div>
                 </div>
                 <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="formRecepcionista">Recepcionista</label>
-<select id="formRecepcionista" required class="w-full border border-slate-300 px-3 py-2 text-xs"><option value="">Seleccionar</option><option>JORGE</option><option>BLANCA</option><option>STEFANY</option><option>MIRTHA</option></select></div>
+<select id="formRecepcionista" required class="w-full border border-slate-300 px-3 py-2 text-xs"><option value="">Seleccionar</option><option>JORGE</option><option>BLANCA</option><option>STEFANI</option><option>MIRTHA</option></select></div>
 <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="formTipoTrabajo">Tipo de trabajo</label><select id="formTipoTrabajo" class="w-full border border-slate-300 px-3 py-2 text-xs"><option value="">Seleccionar</option><option>Timbres y Lamicoid</option><option>Otros</option></select></div>
 <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="formTrabajo">Detalle del trabajo</label><input id="formTrabajo" class="w-full border border-slate-300 px-3 py-2 text-xs"></div>
 
@@ -235,7 +235,7 @@
 
     <!-- LÓGICA DE DATOS LOCALES Y CONTROLADOR -->
     <script>
-        const RECEPCIONISTAS = { JORGE: '#40e0d0', BLANCA: '#4169e1', STEFANY: '#ff0000', MIRTHA: '#87ceeb' };
+        const RECEPCIONISTAS = { JORGE: '#40e0d0', BLANCA: '#4169e1', STEFANI: '#ff0000', MIRTHA: '#87ceeb' };
         function renderLeyendaRecepcionistas() {
             const contenedor = document.getElementById('leyendaRecepcionistas');
             if (!contenedor) return;
@@ -247,8 +247,8 @@
         }
         function escaparHTML(valor) { return String(valor ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
         function mostrarRecepcionista(ot) {
-            const nombre = leerDatosTrabajo(ot.trabajo).recepcionista;
-            return nombre && RECEPCIONISTAS[nombre] ? `<span style="background-color:${RECEPCIONISTAS[nombre]};color:${['BLANCA', 'STEFANY'].includes(nombre) ? '#ffffff' : '#102a43'}" class="inline-block px-2 py-1 rounded-sm font-bold">${nombre}</span>` : 'Sin registrar';
+            const nombre = normalizarPersona(leerDatosTrabajo(ot.trabajo).recepcionista);
+            return nombre && RECEPCIONISTAS[nombre] ? `<span style="background-color:${RECEPCIONISTAS[nombre]};color:${['BLANCA', 'STEFANI'].includes(nombre) ? '#ffffff' : '#102a43'}" class="inline-block px-2 py-1 rounded-sm font-bold">${nombre}</span>` : 'Sin registrar';
         }
         function coincideFechaHistorial(ot) {
             const desde = document.getElementById('historialDesde').value;
@@ -258,7 +258,48 @@
             if (!desde && !hasta) return true;
             return /^\d{4}-\d{2}-\d{2}$/.test(fecha) && (!desde || fecha >= desde) && (!hasta || fecha <= hasta);
         }
-        function limpiarFechasHistorial() { document.getElementById('historialDesde').value = ''; document.getElementById('historialHasta').value = ''; buscarEnHistorial(); }
+        function limpiarFechasHistorial() { document.getElementById('historialDesde').value = ''; document.getElementById('historialHasta').value = ''; document.getElementById('historialDisenador').value = ''; document.getElementById('historialRecepcionista').value = ''; document.getElementById('buscadorHistorial').value = ''; buscarEnHistorial(); }
+        function normalizarPersona(nombre) {
+            const valor = String(nombre || '').trim().toUpperCase();
+            return valor === 'STEFANY' ? 'STEFANI' : valor;
+        }
+        function actualizarFiltrosPersonas() {
+            for (const [id, valores] of [
+                ['historialDisenador', [...Array.from(document.getElementById('formContacto').options, o => o.value), ...databaseMock.map(ot => ot.contacto)]],
+                ['historialRecepcionista', [...Object.keys(RECEPCIONISTAS), ...databaseMock.map(ot => leerDatosTrabajo(ot.trabajo).recepcionista)]]
+            ]) {
+                const select = document.getElementById(id);
+                const seleccionado = select.value;
+                const nombres = [...new Set(valores.map(normalizarPersona).filter(Boolean))].sort();
+                select.innerHTML = '<option value="">Todos</option>' + nombres.map(n => `<option value="${escaparHTML(n)}">${escaparHTML(n)}</option>`).join('');
+                select.value = nombres.includes(seleccionado) ? seleccionado : '';
+            }
+        }
+        function coincidePersonaHistorial(ot) {
+            const disenador = document.getElementById('historialDisenador').value;
+            const recepcionista = document.getElementById('historialRecepcionista').value;
+            return (!disenador || normalizarPersona(ot.contacto) === disenador) &&
+                (!recepcionista || normalizarPersona(leerDatosTrabajo(ot.trabajo).recepcionista) === recepcionista);
+        }
+        function fechaHoraComparable(fecha, hora) {
+            const f = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(fecha || ''));
+            const h = /^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i.exec(String(hora || '').trim());
+            if (!f || !h) return null;
+            let horas = Number(h[1]);
+            const minutos = Number(h[2]);
+            if (minutos > 59 || (h[3] ? horas < 1 || horas > 12 : horas > 23)) return null;
+            if (h[3]) horas = horas % 12 + (h[3].toUpperCase() === 'PM' ? 12 : 0);
+            const fechaUTC = Date.UTC(Number(f[1]), Number(f[2]) - 1, Number(f[3]), horas, minutos);
+            const comprobacion = new Date(fechaUTC);
+            if (comprobacion.getUTCFullYear() !== Number(f[1]) || comprobacion.getUTCMonth() + 1 !== Number(f[2]) || comprobacion.getUTCDate() !== Number(f[3])) return null;
+            return fechaUTC;
+        }
+        function estadoEntrega(ot) {
+            const pactada = fechaHoraComparable(ot.fechaentrega, ot.horaentrega);
+            const real = fechaHoraComparable(ot.fechadespacho, ot.horadespacho);
+            if (pactada === null || real === null) return {clase:'text-slate-500', texto:'Sin datos para comparar'};
+            return real > pactada ? {clase:'text-red-600 bg-red-50', texto:'Entrega atrasada'} : {clase:'text-emerald-700 bg-emerald-50', texto:'Entrega a tiempo'};
+        }
         const COLORES_PERMITIDOS = ['#ef4444', '#f59e0b', '#10b981'];
 
         function normalizarColor(color) {
@@ -725,10 +766,12 @@
         function renderHistorial(filtro = "") {
             const tablaCuerpo = document.getElementById('tablaHistorialCuerpo');
             const historialVacio = document.getElementById('historialVacio');
+            actualizarFiltrosPersonas();
+            filtro = document.getElementById('buscadorHistorial').value;
             tablaCuerpo.innerHTML = '';
 
             const historialFiltrado = databaseMock.filter(ot => {
-                if (!ot.archivada || !coincideFechaHistorial(ot)) return false;
+                if (!ot.archivada || !coincideFechaHistorial(ot) || !coincidePersonaHistorial(ot)) return false;
                 if (!filtro) return true;
                 
                 const textoBusqueda = filtro.toLowerCase();
@@ -747,6 +790,7 @@
 
             // Mostramos los últimos despachados primero
             historialFiltrado.reverse().forEach(ot => {
+                const entrega = estadoEntrega(ot);
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition-colors";
                 tr.innerHTML = `
@@ -754,7 +798,7 @@
                     <td class="p-3 font-semibold text-slate-800 uppercase">${escaparHTML(ot.empresa || '---')}</td>
                     <td class="p-3">${mostrarRecepcionista(ot)}</td><td class="p-3 text-slate-700">${escaparHTML(ot.contacto || '---')}</td>
                     <td class="p-3 text-slate-500 font-bold">${formatearFechaVista(ot.fechaentrega)} a las ${ot.horaentrega}</td>
-                    <td class="p-3 text-emerald-600 font-bold">${formatearFechaVista(ot.fechadespacho)} a las ${ot.horadespacho || '--:--'}</td>
+                    <td class="p-3 ${entrega.clase} font-bold">${formatearFechaVista(ot.fechadespacho)} a las ${ot.horadespacho || '--:--'}<span class="block text-[11px] mt-1">${entrega.texto}</span></td>
                 `;
                 tablaCuerpo.appendChild(tr);
             });
@@ -974,7 +1018,7 @@
             });
             const datosTrabajo = leerDatosTrabajo(ot.trabajo);
             document.getElementById('formTrabajo').value = datosTrabajo.detalle;
-            document.getElementById('formRecepcionista').value = datosTrabajo.recepcionista;
+            document.getElementById('formRecepcionista').value = normalizarPersona(datosTrabajo.recepcionista);
             document.getElementById('formTipoTrabajo').value = datosTrabajo.tipo;
             document.getElementById('formFechaEntrega').value = ot.fechaentrega;
 
