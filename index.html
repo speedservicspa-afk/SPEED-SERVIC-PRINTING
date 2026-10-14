@@ -113,7 +113,7 @@
                 <div class="w-full md:w-72">
                     <input type="text" id="buscadorHistorial" oninput="buscarEnHistorial()" class="w-full bg-slate-50 border border-slate-300 px-3 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500" placeholder="Buscar por COT, Cliente o Detalle...">
                 </div>
-                <div class="flex flex-wrap items-end gap-2"><label class="text-xs">Desde<input type="date" id="historialDesde" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"></label><label class="text-xs">Hasta<input type="date" id="historialHasta" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"></label><label class="text-xs">Filtrar por<select id="historialFechaTipo" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"><option value="fechaactividad">Finalización / despacho</option><option value="fechadespacho">Fecha de despacho</option><option value="fechaentrega">Entrega pactada</option></select></label><label class="text-xs">Diseñador<select id="historialDisenador" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"><option value="">Todos</option></select></label><label class="text-xs">Recepcionista<select id="historialRecepcionista" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"><option value="">Todos</option></select></label><button onclick="limpiarFechasHistorial()" class="border border-slate-300 p-2 text-xs">Limpiar filtros</button></div>
+                <div class="flex flex-wrap items-end gap-2"><label class="text-xs">Desde<input type="date" id="historialDesde" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"></label><label class="text-xs">Hasta<input type="date" id="historialHasta" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"></label><label class="text-xs">Filtrar por<select id="historialFechaTipo" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"><option value="fechaactividad">Finalización / despacho</option><option value="fechadespacho">Fecha de despacho</option><option value="fechaentrega">Entrega pactada</option></select></label><label class="text-xs">Diseñador<select id="historialDisenador" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"><option value="">Todos</option></select></label><label class="text-xs">Recepcionista<select id="historialRecepcionista" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"><option value="">Todos</option></select></label><label class="text-xs">Ordenar por<select id="historialOrden" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"><option value="entrega">Entrega más reciente primero</option><option value="cot">N° de COT: mayor a menor</option></select></label><button onclick="limpiarFechasHistorial()" class="border border-slate-300 p-2 text-xs">Limpiar filtros</button></div>
             </div>
 
             <!-- Tabla de Historial (Pantalla Completa) -->
@@ -850,9 +850,12 @@
 
             // Ordenar por actividad real, no por número de COT.
             historialFiltrado.sort((a, b) => {
+                const numeroCOT = ot => Number(String(ot.id || '').replace(/\D/g, '')) || 0;
+                if (document.getElementById('historialOrden').value === 'cot') return numeroCOT(b) - numeroCOT(a);
+                if (Boolean(a.archivada) !== Boolean(b.archivada)) return a.archivada ? -1 : 1;
                 const actividad = ot => fechaHoraComparable(ot.fechadespacho, ot.horadespacho) ??
                     fechaHoraComparable(leerDatosTrabajo(ot.trabajo).fechaFinalizacion, '23:59') ?? 0;
-                return actividad(b) - actividad(a) || String(b.id).localeCompare(String(a.id), undefined, {numeric:true});
+                return actividad(b) - actividad(a) || numeroCOT(b) - numeroCOT(a);
             }).forEach(ot => {
                 const entrega = ot.archivada ? estadoEntrega(ot) : {clase:'text-slate-600 bg-slate-50', texto:'Pendiente de despacho'};
                 const tr = document.createElement('tr');
