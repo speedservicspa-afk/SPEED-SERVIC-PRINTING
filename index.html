@@ -694,9 +694,9 @@
 
                 const colorTarjeta = ot.color || '#ef4444';
                 const claseBorde = estaEnAlerta ? 'alerta-parpadeo border-rose-500' : `${etapaInfo.borderCard} border-2`;
-                const fondoFinalizado = etapaActual === 2 ? 'background-color: #9ca3af; color: #111827;' : '';
-                const headerColor = etapaActual === 1 ? oscurecerColor(colorTarjeta) : '#4b5563';
-                const bodyColor = etapaActual === 1 ? aclararColor(colorTarjeta) : '#9ca3af';
+                const fondoFinalizado = etapaActual === 2 ? 'background-color: #00ff00; color: #111827;' : '';
+                const headerColor = etapaActual === 1 ? oscurecerColor(colorTarjeta) : '#008000';
+                const bodyColor = etapaActual === 1 ? aclararColor(colorTarjeta) : '#00ff00';
                 const estiloBotonPersonalizado = `style="background-color: ${etapaActual === 1 ? colorTarjeta : '#4b5563'};"`;
 
                 let seccionBoton = "";
@@ -815,16 +815,16 @@
 
         function confirmarFinalizado(id) {
             abrirConfirmacion(
-                'Confirmar',
-                '¿Está seguro?',
+                'Pasar a producción',
+                '¿Pasar esta OT a producción? La hora de entrega se registrará al cerrar.',
                 () => avanzarEtapa(id)
             );
         }
 
         function confirmarCerrar(id) {
             abrirConfirmacion(
-                'Confirmar',
-                '¿Está seguro?',
+                'Concluir OT',
+                '¿Confirmar la entrega y finalizar esta OT? Se registrará la fecha y hora de esta confirmación.',
                 () => archivarOT(id)
             );
         }
