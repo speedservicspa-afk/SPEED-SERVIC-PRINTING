@@ -94,6 +94,18 @@
             </div>
         </div>
 
+        <details class="bg-white border border-slate-200 p-4 my-4" ontoggle="if(this.open) renderResumenSemanal()">
+            <summary class="cursor-pointer font-bold text-indigo-700 text-sm">Resumen semanal automático de OTs</summary>
+            <div class="mt-4 space-y-3">
+                <label class="text-xs font-bold">Seleccionar un día de la semana <input type="date" id="semanaResumen" onchange="renderResumenSemanal()" class="border border-slate-300 p-2 ml-2"></label>
+                <p id="periodoResumen" class="text-xs text-slate-600"></p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><h3 class="font-bold text-sm mb-2">OTs realizadas por diseñador</h3><table class="w-full text-left text-xs"><thead><tr><th class="p-2">Diseñador</th><th class="p-2">OTs finalizadas</th></tr></thead><tbody id="resumenDisenadores"></tbody></table></div>
+                    <div><h3 class="font-bold text-sm mb-2">OTs recepcionadas por recepcionista</h3><table class="w-full text-left text-xs"><thead><tr><th class="p-2">Recepcionista</th><th class="p-2">OTs recepcionadas</th></tr></thead><tbody id="resumenRecepcionistas"></tbody></table></div>
+                </div>
+                <p id="notaResumen" class="text-xs text-slate-500"></p>
+            </div>
+        </details>
         <!-- SECCIÓN: HISTORIAL DE TRABAJO -->
         <div id="vistaHistorial" class="hidden space-y-4 w-full">
             <div class="bg-white border border-slate-200 p-4 flex flex-col md:flex-row justify-between items-center gap-4 shadow-sm w-full">
@@ -299,6 +311,50 @@
             const real = fechaHoraComparable(ot.fechadespacho, ot.horadespacho);
             if (pactada === null || real === null) return {clase:'text-slate-500', texto:'Sin datos para comparar'};
             return real > pactada ? {clase:'text-red-600 bg-red-50', texto:'Entrega atrasada'} : {clase:'text-emerald-700 bg-emerald-50', texto:'Entrega a tiempo'};
+        }
+        function fechaLocalHoy() {
+            return new Intl.DateTimeFormat('en-CA', {timeZone:'America/Santiago', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date());
+        }
+        function limitesSemana(fecha) {
+            const dia = new Date(fecha + 'T12:00:00Z');
+            dia.setUTCDate(dia.getUTCDate() - (dia.getUTCDay() + 6) % 7);
+            const desde = dia.toISOString().slice(0, 10);
+            dia.setUTCDate(dia.getUTCDate() + 6);
+            return {desde, hasta: dia.toISOString().slice(0, 10)};
+        }
+        function calcularResumenSemanal(ordenes, desde, hasta) {
+            const disenadores = Object.fromEntries(Array.from(document.getElementById('formContacto').options, o => [normalizarPersona(o.value), 0]));
+            const recepcionistas = Object.fromEntries(Object.keys(RECEPCIONISTAS).map(n => [normalizarPersona(n), 0]));
+            let sinRecepcion = 0, sinFinalizacion = 0, porDespacho = 0;
+            const enSemana = fecha => fecha && fecha >= desde && fecha <= hasta;
+            const sumar = (grupo, nombre) => { const n = normalizarPersona(nombre) || 'Sin registrar'; grupo[n] = (grupo[n] || 0) + 1; };
+            for (const ot of ordenes) {
+                const datos = leerDatosTrabajo(ot.trabajo);
+                const recepcion = datos.fechaRecepcion || (ot.created_at ? new Intl.DateTimeFormat('en-CA', {timeZone:'America/Santiago', year:'numeric', month:'2-digit', day:'2-digit'}).format(new Date(ot.created_at)) : '');
+                if (!recepcion) sinRecepcion++;
+                else if (enSemana(recepcion)) sumar(recepcionistas, datos.recepcionista);
+                if (ot.etapa === 2 || ot.archivada) {
+                    const finalizacion = datos.fechaFinalizacion || ot.fechadespacho;
+                    if (!finalizacion) sinFinalizacion++;
+                    else if (enSemana(finalizacion)) {
+                        sumar(disenadores, ot.contacto);
+                        if (!datos.fechaFinalizacion) porDespacho++;
+                    }
+                }
+            }
+            return {disenadores, recepcionistas, sinRecepcion, sinFinalizacion, porDespacho};
+        }
+        function renderResumenSemanal() {
+            const input = document.getElementById('semanaResumen');
+            if (!input.value) input.value = fechaLocalHoy();
+            const {desde, hasta} = limitesSemana(input.value);
+            const resumen = calcularResumenSemanal(databaseMock, desde, hasta);
+            document.getElementById('periodoResumen').textContent = `Semana del ${formatearFechaVista(desde)} al ${formatearFechaVista(hasta)} (lunes a domingo).`;
+            for (const [id, grupo] of [['resumenDisenadores', resumen.disenadores], ['resumenRecepcionistas', resumen.recepcionistas]]) {
+                const filas = Object.entries(grupo).sort((a,b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+                document.getElementById(id).innerHTML = filas.map(([n,c]) => `<tr class="border-t border-slate-100"><td class="p-2">${escaparHTML(n)}</td><td class="p-2 font-bold">${c}</td></tr>`).join('') + `<tr class="bg-slate-100 font-bold"><td class="p-2">TOTAL</td><td class="p-2">${filas.reduce((t,f) => t+f[1],0)}</td></tr>`;
+            }
+            document.getElementById('notaResumen').textContent = `Se actualiza automáticamente y cuenta también OTs finalizadas pendientes de despacho. Registros anteriores: ${resumen.sinRecepcion} sin fecha de recepción y ${resumen.sinFinalizacion} finalizados sin fecha, excluidos del conteo correspondiente. ${resumen.porDespacho} OTs de esta semana usan la fecha de despacho por no tener fecha de finalización.`;
         }
         const COLORES_PERMITIDOS = ['#ef4444', '#f59e0b', '#10b981'];
 
@@ -561,6 +617,7 @@
 
         // EVALUAR ALARMAS Y RENDERIZAR PANEL ACTIVO
         function evaluarAlarmasYRender() {
+            renderResumenSemanal();
             const panel = document.getElementById('panelOrdenes');
             const panelVacio = document.getElementById('panelVacio');
             renderResumenDiseñadores();
@@ -701,18 +758,20 @@
         async function avanzarEtapa(id) {
             const index = databaseMock.findIndex(ot => ot.id === id);
             if (index !== -1 && databaseMock[index].etapa !== 2) {
-                databaseMock[index].etapa = 2;
+                const datos = leerDatosTrabajo(databaseMock[index].trabajo);
+                const trabajoFinalizado = JSON.stringify({...datos, version:1, fechaFinalizacion: fechaLocalHoy()});
                 
                 const { error } = await _supabase
                     .from('ots')
-                    .update({ etapa: 2 })
+                    .update({ etapa: 2, trabajo: trabajoFinalizado })
                     .eq('id', id);
 
                 if (error) {
                     alert("Error al actualizar etapa: " + error.message);
                     return;
                 }
-                
+                databaseMock[index].etapa = 2;
+                databaseMock[index].trabajo = trabajoFinalizado;
                 evaluarAlarmasYRender();
             }
         }
@@ -1066,7 +1125,7 @@
                 id: construirIdCOT(numeroCOTManual),
                 empresa: document.getElementById('formEmpresa').value,
                 contacto: document.getElementById('formContacto').value,
-                trabajo: JSON.stringify({version: 1, detalle: document.getElementById('formTrabajo').value, recepcionista: document.getElementById('formRecepcionista').value, tipo: document.getElementById('formTipoTrabajo').value}),
+                trabajo: JSON.stringify({... (otId ? leerDatosTrabajo(databaseMock.find(ot => ot.id === otId)?.trabajo) : {fechaRecepcion: fechaLocalHoy()}), version: 1, detalle: document.getElementById('formTrabajo').value, recepcionista: document.getElementById('formRecepcionista').value, tipo: document.getElementById('formTipoTrabajo').value}),
                 color: colorSeleccionado,
                 fechaentrega: document.getElementById('formFechaEntrega').value,
                 horaentrega: horaEntregaFormateada,
