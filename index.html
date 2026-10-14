@@ -784,9 +784,6 @@
                 const horaDespacho = `${struct12h.hora}:${struct12h.minuto} ${struct12h.periodo}`;
                 const fechaDespacho = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
                 
-                databaseMock[index].archivada = true;
-                databaseMock[index].horadespacho = horaDespacho;
-                databaseMock[index].fechadespacho = fechaDespacho;
 
                 const { error } = await _supabase
                     .from('ots')
@@ -800,8 +797,11 @@
                     alert("Error al archivar: " + error.message);
                     return;
                 }
-                
+                databaseMock[index].archivada = true;
+                databaseMock[index].horadespacho = horaDespacho;
+                databaseMock[index].fechadespacho = fechaDespacho;
                 evaluarAlarmasYRender();
+                renderHistorial();
             }
         }
 
