@@ -1,4 +1,4 @@
-const CACHE_NAME = 'speed-servic-historial-v4';
+const CACHE_NAME = 'speed-servic-produccion-v5';
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => Promise.all(['./', './index.html'].map(async path => { const response = await fetch(path, {cache: 'reload'}); if (!response.ok) throw new Error('No se pudo actualizar la aplicación'); await cache.put(path, response); }))).then(() => self.skipWaiting()));
 });
