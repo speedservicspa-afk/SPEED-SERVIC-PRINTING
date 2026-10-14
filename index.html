@@ -116,6 +116,7 @@
                 <div class="flex flex-wrap items-end gap-2"><label class="text-xs">Desde<input type="date" id="historialDesde" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"></label><label class="text-xs">Hasta<input type="date" id="historialHasta" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"></label><label class="text-xs">Filtrar por<select id="historialFechaTipo" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"><option value="fechaactividad">Producción / despacho</option><option value="fechadespacho">Fecha de despacho</option><option value="fechaentrega">Entrega pactada</option></select></label><label class="text-xs">Diseñador<select id="historialDisenador" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"><option value="">Todos</option></select></label><label class="text-xs">Recepcionista<select id="historialRecepcionista" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"><option value="">Todos</option></select></label><label class="text-xs">Ordenar por<select id="historialOrden" onchange="buscarEnHistorial()" class="block border border-slate-300 p-2"><option value="fecha">Fecha de entrega pactada y N° de COT</option><option value="entrega">Despacho más reciente primero</option><option value="cot">N° de COT: mayor a menor</option></select></label><button onclick="limpiarFechasHistorial()" class="border border-slate-300 p-2 text-xs">Limpiar filtros</button></div>
             </div>
 
+            <div id="totalHistorial" role="status" aria-live="polite" class="bg-indigo-50 border border-indigo-200 p-3 text-sm font-bold text-indigo-800">Total: 0 OTs</div>
             <!-- Tabla de Historial (Pantalla Completa) -->
             <div class="bg-white border border-slate-200 shadow-sm overflow-x-auto w-full rounded-sm">
                 <table class="w-full text-left border-collapse">
@@ -848,6 +849,8 @@
                        (ot.trabajo && ot.trabajo.toLowerCase().includes(textoBusqueda));
             });
 
+            const finalizadas = historialFiltrado.filter(ot => ot.archivada).length;
+            document.getElementById('totalHistorial').textContent = `Total según filtros: ${historialFiltrado.length} OTs · Finalizadas: ${finalizadas} · En producción: ${historialFiltrado.length - finalizadas}`;
             if (historialFiltrado.length === 0) {
                 historialVacio.classList.remove('hidden');
                 return;
