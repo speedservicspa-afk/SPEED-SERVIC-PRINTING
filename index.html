@@ -367,6 +367,42 @@
         const SUPABASE_URL = 'https://zkowbocwzqnbhppgumjx.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inprb3dib2N3enFuYmhwcGd1bWp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1OTEwNzgsImV4cCI6MjEwMjE2NzA3OH0.39JG_nSybIXicj6f2O6mfsPX2hkSqVs2GaRBV04rbsU';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // Bloqueo de interfaz. La autorización de la API debe configurarse en Supabase.
+        const accesoEdicionOT = (() => {
+            let ordenAutorizada = null;
+            let vencimiento = 0;
+            let intento = 0;
+            let fallos = 0;
+            let bloqueadoHasta = 0;
+            const huellaCodigo = 'f6c67adec5e54d4656946691d59eb700526e06b3a2b7ae2985e413747320c23f';
+            function revocar() { ordenAutorizada = null; vencimiento = 0; intento++; }
+            function permite(id) { return ordenAutorizada === String(id) && Date.now() < vencimiento; }
+            async function solicitar(id) {
+                revocar();
+                if (Date.now() < bloqueadoHasta) {
+                    alert('Espera un minuto antes de volver a ingresar el código.'); return false;
+                }
+                const codigo = prompt('Código de autorización para editar esta OT:');
+                if (codigo === null) return false;
+                const solicitud = intento;
+                if (!globalThis.crypto?.subtle) { alert('No se puede verificar el código. Abre la página mediante HTTPS.'); return false; }
+                const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(codigo.trim()));
+                if (solicitud !== intento) return false;
+                const huella = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+                if (huella !== huellaCodigo) {
+                    fallos++;
+                    if (fallos >= 5) { bloqueadoHasta = Date.now() + 60000; fallos = 0; }
+                    alert('Código incorrecto. No se abrió la edición.'); return false;
+                }
+                fallos = 0;
+                ordenAutorizada = String(id);
+                vencimiento = Date.now() + 5 * 60000;
+                return true;
+            }
+            return { solicitar, permite, revocar };
+        })();
+
+
 
         let databaseMock = [];
         let correlativoActual = 1001; // Se inicializa con un valor por defecto, pero se actualiza desde Supabase
@@ -724,7 +760,7 @@
                             <span class="text-[10px] font-extrabold tracking-wider uppercase bg-white/20 px-2 py-0.5 rounded-sm">
                                 ${etapaInfo.nombre}
                             </span>
-                            <button onclick="abrirModalEdicion('${ot.id}')" class="text-white/70 hover:text-white transition-colors p-1" title="Editar OT">
+                            <button onclick="abrirModalEdicion('${ot.id}')" class="text-white/70 hover:text-white transition-colors p-1" title="Editar OT con código">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
                                     <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                                 </svg>
@@ -947,6 +983,7 @@
 
         // CONTROL DE MODAL CREAR OT
         function abrirModal() {
+            accesoEdicionOT.revocar();
             document.getElementById('formOT').reset();
             Array.from(document.getElementById('formContacto').options).filter(o => !['HUBE', 'ABRAHAM'].includes(o.value)).forEach(o => o.remove());
             document.getElementById('formNumeroOT').value = '';
@@ -1008,6 +1045,7 @@
 
         // CERRAR MODAL DE REGISTRO
         function cerrarModal() {
+            accesoEdicionOT.revocar();
             document.getElementById('modalNuevaOT').classList.add('hidden');
             document.getElementById('formOT').reset();
             document.getElementById('formColor').value = '#ef4444';
@@ -1068,7 +1106,9 @@
         document.getElementById('confirmarBtnSi').onclick = ejecutarConfirmacion; // Asignar el evento al botón
         
         // Función para abrir el modal en modo edición
-        function abrirModalEdicion(id) {
+        async function abrirModalEdicion(id) {
+            if (!databaseMock.some(o => o.id === id)) return;
+            if (!await accesoEdicionOT.solicitar(id)) return;
             const ot = databaseMock.find(o => o.id === id);
             if (!ot) return;
 
@@ -1126,7 +1166,11 @@
 
         async function guardarOT(e) {
             e.preventDefault();
-            
+            const idEdicion = document.getElementById('formOTId').value;
+            if (idEdicion && !accesoEdicionOT.permite(idEdicion)) {
+                alert('Ingresa nuevamente el código para editar esta OT.');
+                cerrarModal(); return;
+            }
             // Prevenir duplicados (Error 409) desactivando el botón
             const btnSubmit = e.target.querySelector('button[type="submit"]');
             if (btnSubmit.disabled) return;
@@ -1161,6 +1205,9 @@
 
             if (otId) { // Si otId tiene valor, estamos editando una OT existente, pedimos confirmación
                 const funcionActualizar = async () => {
+                    if (!accesoEdicionOT.permite(otId)) {
+                        alert('La autorización de edición venció. Ingresa nuevamente el código.'); return;
+                    }
                     const dataToUpdate = {
                         empresa: nuevaOT.empresa,
                         contacto: nuevaOT.contacto,
@@ -1269,3 +1316,4 @@
     </script>
 </body>
 </html>
+
