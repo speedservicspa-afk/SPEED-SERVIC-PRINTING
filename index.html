@@ -374,7 +374,7 @@
             let intento = 0;
             let fallos = 0;
             let bloqueadoHasta = 0;
-            const huellaCodigo = '8f9729e5700b502399dbac620134ebe2618becca0537e124dbf859fb94a20006';
+            const huellaCodigo = 'f6c67adec5e54d4656946691d59eb700526e06b3a2b7ae2985e413747320c23f';
             function revocar() { ordenAutorizada = null; vencimiento = 0; intento++; }
             function permite(id) { return ordenAutorizada === String(id) && Date.now() < vencimiento; }
             async function solicitar(id) {
