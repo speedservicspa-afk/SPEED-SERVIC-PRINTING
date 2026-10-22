@@ -164,8 +164,9 @@
                     <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Diseñador</label>
                     <div class="flex items-center gap-2">
                         <select id="formContacto" class="flex-1 bg-white border border-slate-300 px-3 py-2 text-xs focus:outline-none text-slate-800 focus:border-indigo-500" required>
-                            <option value="HUBE">HUBE</option>
+                            <option value="HUBER">HUBER</option>
                             <option value="ABRAHAM">ABRAHAM</option>
+                            <option value="IVAN">IVAN</option>
                             
                         </select>
                         <div class="flex items-center gap-1.5 ml-1">
@@ -274,7 +275,7 @@
         function limpiarFechasHistorial() { document.getElementById('historialDesde').value = ''; document.getElementById('historialHasta').value = ''; document.getElementById('historialDisenador').value = ''; document.getElementById('historialRecepcionista').value = ''; document.getElementById('buscadorHistorial').value = ''; buscarEnHistorial(); }
         function normalizarPersona(nombre) {
             const valor = String(nombre || '').trim().toUpperCase();
-            return valor === 'STEFANY' ? 'STEFANI' : valor;
+            return valor === 'HUBE' ? 'HUBER' : valor === 'STEFANY' ? 'STEFANI' : valor;
         }
         function actualizarFiltrosPersonas() {
             for (const [id, valores] of [
@@ -429,7 +430,7 @@
                 if (error) throw error;
 
                 if (data && data.length > 0) {
-                    databaseMock = [...data].sort((a, b) => {
+                    databaseMock = data.map(ot => ({ ...ot, contacto: normalizarPersona(ot.contacto) })).sort((a, b) => {
                         const idA = parseInt(String(a.id).replace(/^OT-|^COT-/i, ''), 10) || 0;
                         const idB = parseInt(String(b.id).replace(/^OT-|^COT-/i, ''), 10) || 0;
                         return idA - idB;
@@ -648,7 +649,8 @@
 
             const resumen = [
                 { nombre: 'HUBER', color: '#ef4444' },
-                { nombre: 'ABRAHAM', color: '#f59e0b' }
+                { nombre: 'ABRAHAM', color: '#f59e0b' },
+                { nombre: 'IVAN', color: '#10b981' }
             ];
 
             contenedor.innerHTML = resumen.map(item => `
@@ -930,7 +932,7 @@
         function obtenerColorPorDiseñador(nombre) {
             const valor = String(nombre || '').trim().toUpperCase();
             if (valor === 'ABRAHAM') return '#f59e0b';
-            if (valor === 'JASON') return '#10b981';
+            if (valor === 'IVAN' || valor === 'JASON') return '#10b981';
             return '#ef4444';
         }
 
@@ -985,7 +987,7 @@
         function abrirModal() {
             accesoEdicionOT.revocar();
             document.getElementById('formOT').reset();
-            Array.from(document.getElementById('formContacto').options).filter(o => !['HUBE', 'ABRAHAM'].includes(o.value)).forEach(o => o.remove());
+            Array.from(document.getElementById('formContacto').options).filter(o => !['HUBER', 'ABRAHAM', 'IVAN'].includes(o.value)).forEach(o => o.remove());
             document.getElementById('formNumeroOT').value = '';
             // Limpiar el ID de OT oculto y restaurar el título/botón para "Nueva OT"
             document.getElementById('formOTId').value = '';
@@ -1000,7 +1002,7 @@
 
             const selectDiseñador = document.getElementById('formContacto');
             if (selectDiseñador) {
-                selectDiseñador.value = 'HUBE';
+                selectDiseñador.value = 'HUBER';
             }
 
             const ahora = new Date();
@@ -1119,7 +1121,7 @@
             document.getElementById('formNumeroOT').value = String(ot.id || '').replace(/\D/g, '');
             document.getElementById('formEmpresa').value = ot.empresa || '';
             const selectDiseñador = document.getElementById('formContacto');
-            const nombreDiseñadorValido = String(ot.contacto || 'HUBE').trim().toUpperCase();
+            const nombreDiseñadorValido = String(ot.contacto || 'HUBER').trim().toUpperCase();
             if (selectDiseñador && !Array.from(selectDiseñador.options).some(o => o.value === nombreDiseñadorValido)) {
                 selectDiseñador.add(new Option(nombreDiseñadorValido + ' (registro anterior)', nombreDiseñadorValido));
             }
