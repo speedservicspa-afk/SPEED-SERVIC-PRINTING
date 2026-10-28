@@ -416,6 +416,19 @@
         // Historial de alertas habladas para evitar repeticiones excesivas
         let spokenAlerts = {};
         
+        function mostrarEstadoCargaOT(mensaje) {
+            let aviso = document.getElementById('estadoCargaOT');
+            if (!aviso) {
+                aviso = document.createElement('div');
+                aviso.id = 'estadoCargaOT';
+                aviso.setAttribute('role', 'alert');
+                aviso.className = 'bg-amber-50 border border-amber-300 p-3 text-sm text-amber-900 my-2';
+                document.getElementById('panelOrdenes').before(aviso);
+            }
+            aviso.textContent = mensaje;
+            aviso.hidden = !mensaje;
+        }
+
         // Cargar datos desde Supabase
         let cargaOTsEnCurso = false;
         let cargaOTsPendiente = false;
@@ -423,11 +436,21 @@
             if (cargaOTsEnCurso) { cargaOTsPendiente = true; return; }
             cargaOTsEnCurso = true;
             try {
-                const { data, error } = await _supabase
-                    .from('ots')
-                    .select('*');
-
-                if (error) throw error;
+                // Paginar también el historial: la API puede limitar cada respuesta.
+                const data = [];
+                let offset = 0;
+                while (true) {
+                    const { data: pagina, error, count } = await _supabase
+                        .from('ots')
+                        .select('*', { count: 'exact' })
+                        .order('id', { ascending: true })
+                        .range(offset, offset + 499);
+                    if (error) throw error;
+                    if (!Array.isArray(pagina)) throw new Error('Respuesta de OT no válida');
+                    data.push(...pagina);
+                    offset += pagina.length;
+                    if (pagina.length === 0 || (count !== null && count !== undefined && offset >= count)) break;
+                }
 
                 if (data && data.length > 0) {
                     databaseMock = data.map(ot => ({ ...ot, contacto: normalizarPersona(ot.contacto) })).sort((a, b) => {
@@ -445,8 +468,12 @@
                     correlativoActual = 1001;
                 }
                 evaluarAlarmasYRender();
+                mostrarEstadoCargaOT('');
+                return true;
             } catch (err) {
                 console.error("Error de conexión:", err.message);
+                mostrarEstadoCargaOT('No se pudo actualizar el panel de OT. Se conserva la última lista. Comprueba tu conexión y vuelve a intentar.');
+                return false;
             } finally {
                 cargaOTsEnCurso = false;
                 if (cargaOTsPendiente) { cargaOTsPendiente = false; cargarDatosDesdeSupabase(); }
@@ -1253,8 +1280,11 @@
                     btnSubmit.disabled = false;
                     btnSubmit.innerText = textoOriginal;
                 } else {
-                    cerrarModal(); // Cerramos el modal inmediatamente tras el éxito para mayor agilidad
-                    await cargarDatosDesdeSupabase(); // Refrescamos la lista en segundo plano
+                    // Mostrar el registro confirmado aunque la recarga tarde o falle.
+                    databaseMock = [...databaseMock.filter(ot => ot.id !== nuevaOT.id), nuevaOT];
+                    evaluarAlarmasYRender();
+                    cerrarModal();
+                    await cargarDatosDesdeSupabase();
                     // El botón se rehabilita en cerrarModal()
                 }
             }
